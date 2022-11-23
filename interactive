@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+
+from sys import argv, stdin, stdout, stderr
+from subprocess import Popen, PIPE
+from select import poll, select, POLLIN, POLLOUT, POLLHUP
+from fcntl import fcntl, F_SETFL, F_GETFL
+from os import O_NONBLOCK
+
+def make_pipes():
+    return None, None
+
+def set_non_blocking(fd):
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+
+def run_program(cmd, pipe_in, pipe_out):
+    print("Running '{0}'".format(" ".join(cmd)))
+    p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    set_non_blocking(p.stdout)
+    return p
+
+def main():
+    pipe_in, pipe_out = make_pipes()
+    p = run_program(argv[1:], pipe_in, pipe_out)
+
+    # wait for readable in/out of the program
+    # and copy them to the pipes
+    po = poll()
+    po.register(stdin, POLLOUT)
+    po.register(p.stdout, POLLIN | POLLOUT)
+
+    stdinfd = stdin.fileno()
+    stdoutfd = p.stdout.fileno()
+    monitor = True
+    while monitor:
+        fds = po.poll()
+        for fd, ev in fds:
+            #print("fd: ", fd, "ev: ", ev)
+            if fd == stdoutfd and ev & POLLIN:
+                line = p.stdout.readline()
+                while line:
+                    print("[stdout]", line.decode('utf-8'), end="")
+                    line = p.stdout.readline()
+            elif fd == stdinfd and ev & POLLOUT:
+                if select([stdin, ], [], [], 0.01)[0]:
+                    line = stdin.readline()
+                    print('[stdin ]', line, end="")
+                    p.stdin.write(line.encode('utf-8'))
+                    p.stdin.flush()
+
+            if ev == POLLHUP:  # if the only ev is HUP, we're finished
+                monitor = False
+                break
+
+
+if __name__ == "__main__":
+    if len(argv) < 2:
+        print(f"Usage: {argv[0]} program arg1 arg2 ...", file=stderr)
+        exit(1)
+    main()

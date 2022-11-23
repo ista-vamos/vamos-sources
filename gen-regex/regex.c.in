@@ -1,0 +1,78 @@
+#include <assert.h>
+#include <regex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "event.h"
+#include "shmbuf/buffer.h"
+#include "shmbuf/client.h"
+#include "signatures.h"
+#include "source.h"
+
+/*!maxnmatch:re2c */
+
+struct event {
+    shm_event base;
+    unsigned char args[];
+};
+
+static size_t waiting_for_buffer = 0;
+
+int main(int argc, char *argv[]) {
+
+    @SOURCE_CONTROL
+    struct buffer *shm = @CREATE_SHARED_BUFFER
+
+    fprintf(stderr, "info: waiting for the monitor to attach... ");
+    buffer_wait_for_monitor(shm);
+    fprintf(stderr, "done\n");
+
+    ssize_t len;
+    size_t line_len;
+    char *line = NULL;
+    signature_operand op;
+
+    struct event ev;
+    memset(&ev, 0, sizeof(ev));
+    size_t num;
+    struct event_record *events = buffer_get_avail_events(shm, &num);
+    assert(num == @EVENTS_NUM && "Information in shared memory does not fit");
+    struct event *out;
+    unsigned char *addr;
+
+    /*!re2c
+       re2c:yyfill:enable = 0;
+       re2c:define:YYCTYPE = char;
+       re2c:tags:expression = yyt[@@];
+       re2c:tags:prefix = "";
+    */
+    const char *YYLIMIT;
+    char *YYCURSOR;
+    char *YYMARKER;
+    char *yyt[2*YYMAXNMATCH+1];
+    size_t yynmatch;
+    char *yypmatch[2*YYMAXNMATCH];
+
+    while (1) {
+        len = getline(&line, &line_len, stdin);
+        if (len == -1)
+            break;
+        if (len == 0)
+            continue;
+
+        /* remove newline from the line */
+        line[len - 1] = '\0';
+
+	@PARSE_AND_PUSH
+    }
+
+    /* Free up memory held within the regex memory */
+    fprintf(stderr, "info: sent %lu events, busy waited on buffer %lu cycles\n",
+            ev.base.id, waiting_for_buffer);
+    free(line);
+
+    destroy_shared_buffer(shm);
+
+    return 0;
+}
