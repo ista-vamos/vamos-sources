@@ -41,13 +41,11 @@
 #ifdef SHOW_SYMBOLS
 #include "drsyms.h"
 #endif
-#include "utils.h"
-
 #include "buffer.h"
 #include "client.h"
-
 #include "event.h" /* shm_event_dropped */
 #include "events.h"
+#include "utils.h"
 
 static void event_exit(void);
 /*
@@ -188,18 +186,18 @@ static inline void *call_get_arg_ptr(dr_mcontext_t *mc, int i, char o) {
     }
     DR_ASSERT(i < 6);
     switch (i) {
-    case 0:
-        return &mc->xdi;
-    case 1:
-        return &mc->xsi;
-    case 2:
-        return &mc->xdx;
-    case 3:
-        return &mc->xcx;
-    case 4:
-        return &mc->r8;
-    case 5:
-        return &mc->r9;
+        case 0:
+            return &mc->xdi;
+        case 1:
+            return &mc->xsi;
+        case 2:
+            return &mc->xdx;
+        case 3:
+            return &mc->xcx;
+        case 4:
+            return &mc->r8;
+        case 5:
+            return &mc->r9;
     }
 }
 

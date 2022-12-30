@@ -1,3 +1,5 @@
+#include "syswrite.h"
+
 #include <assert.h>
 #include <bpf/bpf.h>
 #include <errno.h>
@@ -8,21 +10,20 @@
 
 #include "btf_helpers.h"
 #include "errno_helpers.h"
-#include "syswrite.h"
-#include "syswrite.skel.h"
-#include "trace_helpers.h"
-
 #include "shamon/core/event.h"
 #include "shamon/core/signatures.h"
 #include "shamon/core/source.h"
 #include "shamon/shmbuf/buffer.h"
 #include "shamon/shmbuf/client.h"
+#include "syswrite.skel.h"
+#include "trace_helpers.h"
 
 #define warn(...) fprintf(stderr, __VA_ARGS__)
 
 static void usage_and_exit(int ret) {
-    warn("Usage: syswrite shmkey name expr sig [name expr sig] ... -- [program "
-         "arg1 arg2... | -p PID]\n");
+    warn(
+        "Usage: syswrite shmkey name expr sig [name expr sig] ... -- [program "
+        "arg1 arg2... | -p PID]\n");
     exit(ret);
 }
 
@@ -142,32 +143,33 @@ static void parse_line(bool iswrite, const struct event *e, char *line) {
             }
 
             switch (*o) {
-            case 'c':
-                assert(len == 1);
-                addr = buffer_partial_push(
-                    shm, addr, (char *)(line + matches[m].rm_eo), sizeof(op.c));
-                break;
-            case 'i':
-                op.i = atoi(tmpline);
-                addr = buffer_partial_push(shm, addr, &op.i, sizeof(op.i));
-                break;
-            case 'l':
-                op.l = atol(tmpline);
-                addr = buffer_partial_push(shm, addr, &op.l, sizeof(op.l));
-                break;
-            case 'f':
-                op.f = atof(tmpline);
-                addr = buffer_partial_push(shm, addr, &op.f, sizeof(op.f));
-                break;
-            case 'd':
-                op.d = strtod(tmpline, NULL);
-                addr = buffer_partial_push(shm, addr, &op.d, sizeof(op.d));
-                break;
-            case 'S':
-                addr = buffer_partial_push_str(shm, addr, ev.id, tmpline);
-                break;
-            default:
-                assert(0 && "Invalid signature");
+                case 'c':
+                    assert(len == 1);
+                    addr = buffer_partial_push(
+                        shm, addr, (char *)(line + matches[m].rm_eo),
+                        sizeof(op.c));
+                    break;
+                case 'i':
+                    op.i = atoi(tmpline);
+                    addr = buffer_partial_push(shm, addr, &op.i, sizeof(op.i));
+                    break;
+                case 'l':
+                    op.l = atol(tmpline);
+                    addr = buffer_partial_push(shm, addr, &op.l, sizeof(op.l));
+                    break;
+                case 'f':
+                    op.f = atof(tmpline);
+                    addr = buffer_partial_push(shm, addr, &op.f, sizeof(op.f));
+                    break;
+                case 'd':
+                    op.d = strtod(tmpline, NULL);
+                    addr = buffer_partial_push(shm, addr, &op.d, sizeof(op.d));
+                    break;
+                case 'S':
+                    addr = buffer_partial_push_str(shm, addr, ev.id, tmpline);
+                    break;
+                default:
+                    assert(0 && "Invalid signature");
             }
         }
         buffer_finish_push(shm);
@@ -216,13 +218,9 @@ static int handle_event(void *ctx, void *data, size_t data_sz) {
 static volatile sig_atomic_t running = 1;
 static volatile sig_atomic_t child_running = 1;
 
-void sig_int(int signo) {
-    running = 0;
-}
+void sig_int(int signo) { running = 0; }
 
-void sig_chld(int signo) {
-    child_running = 0;
-}
+void sig_chld(int signo) { child_running = 0; }
 
 int parse_args(int argc, char *argv[]) {
     int i = 1;
@@ -363,7 +361,6 @@ int main(int argc, char *argv[]) {
         err = 1;
         goto cleanup_core;
     }
-
 
     if (filter_pid > 0)
         obj->rodata->filter_pid = filter_pid;

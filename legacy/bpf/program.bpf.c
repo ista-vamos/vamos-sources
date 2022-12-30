@@ -1,7 +1,7 @@
-#include "vmlinux.h"
-
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
+
+#include "vmlinux.h"
 
 #define BUF_SIZE 255
 
@@ -39,7 +39,7 @@ static int handle_dropping(void) {
 }
 */
 
-struct syscall_enter_write_args{
+struct syscall_enter_write_args {
     unsigned long long unused;
     long __syscall_nr;
     unsigned long long fd;
@@ -48,7 +48,8 @@ struct syscall_enter_write_args{
 };
 
 SEC("tracepoint/syscalls/sys_enter_write")
-int tracepoint__syscalls__sys_enter_write(struct trace_event_raw_sys_enter *ctx) {
+int tracepoint__syscalls__sys_enter_write(
+    struct trace_event_raw_sys_enter *ctx) {
     int ret;
     int zero = 0;
     unsigned int len, off = 0;
@@ -62,10 +63,9 @@ int tracepoint__syscalls__sys_enter_write(struct trace_event_raw_sys_enter *ctx)
         return 0;
     }
 
-    struct syscall_enter_write_args* args = (struct syscall_enter_write_args*)ctx;
-    int fd = args->fd;
-    if (fd != 1) {
-        return 0; // not interested
+    struct syscall_enter_write_args* args = (struct
+    syscall_enter_write_args*)ctx; int fd = args->fd; if (fd != 1) { return 0;
+    // not interested
     }
 
     int count = args->count;
@@ -98,7 +98,6 @@ int tracepoint__syscalls__sys_enter_write(struct trace_event_raw_sys_enter *ctx)
 #endif
 
     return 0;
-
 }
 
 char _license[] SEC("license") = "GPL";

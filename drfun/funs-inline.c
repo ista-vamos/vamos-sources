@@ -182,7 +182,6 @@ static void rotate_buffer(void) {
 static void rotate_if_needed(void *drcontext, instrlist_t *ilist,
                              instr_t *where, reg_id_t scratch,
                              reg_id_t reg_tmp) {
-
     /* reg_tmp now contains the offset into the buffer */
     compare_buf_off(drcontext, ilist, where, scratch, reg_tmp,
                     buffer_allocation_size(), /* len = */ 12);

@@ -2,10 +2,10 @@
  * Based on Code Manipulation API Sample (syscall.c) from DynamoRIO
  */
 
-#include "dr_api.h"
-#include "drmgr.h"
 #include <string.h> /* memset */
 
+#include "dr_api.h"
+#include "drmgr.h"
 #include "fastbuf/shm_monitored.h"
 
 #ifdef UNIX

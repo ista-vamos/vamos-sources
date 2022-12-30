@@ -43,8 +43,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-// #include <immintrin.h> /* _mm_pause */
-
 #include "dr_api.h"
 #include "dr_defines.h"
 #include "drmgr.h"
@@ -64,72 +62,40 @@
 #endif
 
 #include "event.h" /* shm_event_dropped */
-#include "eventspec.h"
 #include "signatures.h"
 #include "source.h"
 #include "stream-funs.h"
 
 static void event_exit(void);
 
+/* for some reason we need this...*/
+#undef bool
+#define bool char
+
 static dr_emit_flags_t event_app_instruction(void *drcontext, void *tag,
                                              instrlist_t *bb, instr_t *instr,
                                              bool for_trace, bool translating,
                                              void *user_data);
 
-static struct buffer *shm;
-static const char *shmkey;
+static void event_thread_context_init(void *drcontext, bool new_depth);
+static void event_thread_context_exit(void *drcontext, bool process_exit);
 
-static struct source_control *control;
+static struct buffer *top_shmbuffer;
+static struct source_control *top_control;
 static struct event_record *events;
 unsigned long *addresses;
 static size_t events_num;
-static uint64_t waiting_for_buffer = 0;
 
-/*
-bool enumsym(const char *name, size_t off, void *data) {
-    dr_printf("symbol: %s\n", name);
-    return true;
-}
-*/
+typedef struct {
+    size_t thread;
+    struct buffer *shm;
+    size_t waiting_for_buffer;
+} per_thread_t;
 
-/* from instrcalls.c in DynamoRIO
-static void
-print_address(file_t f, app_pc addr, const char *prefix)
-{
-    drsym_error_t symres;
-    drsym_info_t sym;
-    char name[255];
-    char file[MAXIMUM_PATH];
-    module_data_t *data;
-    data = dr_lookup_module(addr);
-    if (data == NULL) {
-        dr_fprintf(f, "%s " PFX " ? ??:0\n", prefix, addr);
-        return;
-    }
-    sym.struct_size = sizeof(sym);
-    sym.name = name;
-    sym.name_size = 254;
-    sym.file = file;
-    sym.file_size = MAXIMUM_PATH;
-    symres = drsym_lookup_address(data->full_path, addr - data->start, &sym,
-                                  DRSYM_DEFAULT_FLAGS);
-    if (symres == DRSYM_SUCCESS || symres == DRSYM_ERROR_LINE_NOT_AVAILABLE) {
-        const char *modname = dr_module_preferred_name(data);
-        if (modname == NULL)
-            modname = "<noname>";
-        dr_fprintf(f, "%s " PFX " %s!%s+" PIFX, prefix, addr, modname, sym.name,
-                   addr - data->start - sym.start_offs);
-        if (symres == DRSYM_ERROR_LINE_NOT_AVAILABLE) {
-            dr_fprintf(f, " ??:0\n");
-        } else {
-            dr_fprintf(f, " %s:%" UINT64_FORMAT_CODE "+" PIFX "\n", sym.file,
-sym.line, sym.line_offs);
-        }
-    } else
-        dr_fprintf(f, "%s " PFX " ? ??:0\n", prefix, addr);
-    dr_free_module_data(data);
-}
-*/
+/* Thread-context-local storage index from drmgr */
+static int tcls_idx;
+/* we'll number threads from 0 up */
+static size_t thread_num = 0;
 
 static void find_functions(void *drcontext, const module_data_t *mod,
                            char loaded) {
@@ -182,32 +148,42 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
         DR_ASSERT(0);
     }
 
-    shmkey = argv[1];
+    const char *shmkey = argv[1];
     events_num = argc - 2;
+    dr_fprintf(STDERR, "shmkey: %s\n", shmkey);
+    dr_fprintf(STDERR, "number of events: %lu\n", events_num);
     addresses = dr_global_alloc(events_num * sizeof(unsigned long));
     DR_ASSERT(addresses);
-    control = malloc(sizeof(struct source_control) +
-                     sizeof(struct event_record) * events_num);
-    events = control->events;
-    for (int i = 1; i < argc; ++i) {
-        const char *sig = strrchr(argv[i], ':');
-        if (sig) {
-            ++sig;
-            DR_ASSERT(strlen(sig) <= sizeof(events[0].signature));
-            strncpy((char *)events[i - 1].signature, sig,
-                    sizeof(events[0].signature));
-            strncpy(events[i - 1].name, argv[i], sig - argv[i] - 1);
+
+    const char *names[events_num];
+    const char *signatures[events_num];
+
+    for (size_t i = 0; i < events_num; ++i) {
+        names[i] = argv[i + 2];
+        char *colon = strchr(names[i], ':');
+        if (colon) {
+            *colon = 0;
+            signatures[i] = colon + 1;
         } else {
-            DR_ASSERT(strlen(argv[i]) < 64 && "Too big function name");
-            strncpy(events[i - 1].name, argv[i], 63);
-            events[i - 1].signature[0] = '\0';
+            signatures[i] = "";
         }
+        dr_fprintf(STDERR, "Registering event '%s' with signature '%s'\n",
+                   names[i], signatures[i]);
     }
+
+    /* Initialize the info about this source */
+    top_control = source_control_define_pairwise(
+        events_num, (const char **)names, (const char **)signatures);
+    assert(top_control);
 
     dr_set_client_name("Track function calls", "");
     drmgr_init();
     /* make it easy to tell, by looking at log file, which client executed */
     dr_log(NULL, DR_LOG_ALL, 1, "Client 'drfun' initializing\n");
+    tcls_idx = drmgr_register_cls_field(event_thread_context_init,
+                                        event_thread_context_exit);
+    DR_ASSERT(tcls_idx != -1);
+
     /* also give notification to stderr */
     if (dr_is_notify_on()) {
 #ifdef WINDOWS
@@ -227,12 +203,50 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
 
     drmgr_register_bb_instrumentation_event(NULL, (void *)event_app_instruction,
                                             0);
+
+    const size_t capacity = 256;
+    top_shmbuffer = create_shared_buffer(shmkey, capacity, top_control);
+    DR_ASSERT(top_shmbuffer);
+
+    events = buffer_get_avail_events(top_shmbuffer, &events_num);
+
+    dr_printf("Waiting for the monitor to attach\n");
+    if (buffer_wait_for_monitor(top_shmbuffer) < 0) {
+        perror("Waiting for the buffer failed");
+        abort();
+    }
+}
+static void event_thread_context_init(void *drcontext, bool new_depth) {
+    /* create an instance of our data structure for this thread context */
+    per_thread_t *data;
+    if (new_depth) {
+        data = (per_thread_t *)dr_thread_alloc(drcontext, sizeof(per_thread_t));
+        drmgr_set_cls_field(drcontext, tcls_idx, data);
+        data->thread = ++thread_num;
+        /* TODO: for now we create a buffer of the same type as the top buffer
+         */
+        data->shm = create_shared_sub_buffer(top_shmbuffer, 0, top_control);
+        data->waiting_for_buffer = 0;
+        DR_ASSERT(data->shm && "Failed creating buffer");
+    } else {
+        data = (per_thread_t *)drmgr_get_cls_field(drcontext, tcls_idx);
+    }
+}
+
+static void event_thread_context_exit(void *drcontext, bool thread_exit) {
+    if (!thread_exit)
+        return;
+    per_thread_t *data =
+        (per_thread_t *)drmgr_get_cls_field(drcontext, tcls_idx);
+    dr_printf(
+        "Thread %lu exits, looped in a busy wait for the buffer %lu times\n",
+        data->thread, data->waiting_for_buffer);
+    dr_printf("... (releasing shared buffer)\n");
+    release_shared_buffer(data->shm);
+    dr_thread_free(drcontext, data, sizeof(per_thread_t));
 }
 
 static void event_exit(void) {
-    dr_printf("Looped in a busy wait for the buffer %lu times\n",
-              waiting_for_buffer);
-
 #ifdef SHOW_SYMBOLS
     if (drsym_exit() != DRSYM_SUCCESS) {
         dr_log(NULL, DR_LOG_ALL, 1,
@@ -240,8 +254,7 @@ static void event_exit(void) {
     }
 #endif
     drmgr_exit();
-    dr_printf("Releasing shared buffer\n");
-    destroy_shared_buffer(shm);
+    destroy_shared_buffer(top_shmbuffer);
     dr_global_free(addresses, events_num * sizeof(unsigned long));
 }
 
@@ -270,18 +283,18 @@ static inline void *call_get_arg_ptr(dr_mcontext_t *mc, int i, char o) {
     }
     DR_ASSERT(i < 6);
     switch (i) {
-    case 0:
-        return &mc->xdi;
-    case 1:
-        return &mc->xsi;
-    case 2:
-        return &mc->xdx;
-    case 3:
-        return &mc->xcx;
-    case 4:
-        return &mc->r8;
-    case 5:
-        return &mc->r9;
+        case 0:
+            return &mc->xdi;
+        case 1:
+            return &mc->xsi;
+        case 2:
+            return &mc->xdx;
+        case 3:
+            return &mc->xcx;
+        case 4:
+            return &mc->r8;
+        case 5:
+            return &mc->r9;
     }
     DR_ASSERT(0 && "Not implemented");
     return NULL;
@@ -291,12 +304,15 @@ static size_t last_event_id = 0;
 
 static void at_call_generic(size_t fun_idx, const char *sig) {
     dr_mcontext_t mc = {sizeof(mc), DR_MC_INTEGER};
-    dr_get_mcontext(dr_get_current_drcontext(), &mc);
+    void *drcontext = dr_get_current_drcontext();
+    dr_get_mcontext(drcontext, &mc);
+
+    per_thread_t *data =
+        (per_thread_t *)drmgr_get_cls_field(drcontext, tcls_idx);
+    struct buffer *shm = data->shm;
     void *shmaddr;
     while (!(shmaddr = buffer_start_push(shm))) {
-        ++waiting_for_buffer;
-        /* _mm_pause(); */
-        /* DR_ASSERT(0 && "Buffer full"); */
+        ++data->waiting_for_buffer;
     }
     DR_ASSERT(fun_idx < events_num);
     shm_event_funcall *ev = (shm_event_funcall *)shmaddr;
@@ -305,24 +321,25 @@ static void at_call_generic(size_t fun_idx, const char *sig) {
     memcpy(ev->signature, events[fun_idx].signature, sizeof(ev->signature));
     shmaddr = ev->args;
     DR_ASSERT(shmaddr && "Failed partial push");
-    /* printf("Fun %lu -- %s\n", fun_idx, sig); */
+    printf("Fun %lu -- %s\n", fun_idx, sig);
     int i = 0;
     for (const char *o = sig; *o; ++o) {
         switch (*o) {
-        case '_':
-            break;
-        case 'S':
-            shmaddr = buffer_partial_push_str(
-                shm, shmaddr, last_event_id,
-                *(const char **)call_get_arg_ptr(&mc, i, *o));
-            break;
-        default:
-            shmaddr =
-                buffer_partial_push(shm, shmaddr, call_get_arg_ptr(&mc, i, *o),
-                                    signature_op_get_size(*o));
-            /* printf(" arg %d=%ld", i, *(size_t*)call_get_arg_ptr(&mc, i, *o));
-             */
-            break;
+            case '_':
+                break;
+            case 'S':
+                shmaddr = buffer_partial_push_str(
+                    shm, shmaddr, last_event_id,
+                    *(const char **)call_get_arg_ptr(&mc, i, *o));
+                break;
+            default:
+                shmaddr = buffer_partial_push(shm, shmaddr,
+                                              call_get_arg_ptr(&mc, i, *o),
+                                              signature_op_get_size(*o));
+                /* printf(" arg %d=%ld", i, *(size_t*)call_get_arg_ptr(&mc, i,
+                 * *o));
+                 */
+                break;
         }
         ++i;
     }
@@ -337,32 +354,12 @@ static dr_emit_flags_t event_app_instruction(void *drcontext, void *tag,
     (void)tag;
     (void)for_trace;
     (void)user_data;
-    /* FIXME: isn't there a better place to put this callback? */
-    if (!shm) {
-        shm = create_shared_buffer(shmkey, control);
-        DR_ASSERT(shm);
-
-        events = buffer_get_avail_events(shm, &events_num);
-        free(control);
-
-        dr_printf("Waiting for the monitor to attach\n");
-        buffer_wait_for_monitor(shm);
-    }
 
     if (instr_is_meta(instr) || translating)
         return DR_EMIT_DEFAULT;
 
     if (instr_is_call_direct(instr)) {
         app_pc target = call_get_target(instr);
-        /*
-        print_address(STDERR, target, "sym");
-        module_data_t *module = dr_lookup_module(target);
-        DR_ASSERT(target && "Do not have call target");
-        size_t off = dr_module_addr_offset(module, target);
-        dr_free_module_data(module);
-        if (off == (~(size_t)0))
-            return DR_EMIT_DEFAULT;
-        */
         for (size_t i = 0; i < events_num; ++i) {
             // dr_printf("   target 0x%x == 0x%x events[%lu].addr\n", target,
             // events[i].addr, i);
@@ -370,7 +367,7 @@ static dr_emit_flags_t event_app_instruction(void *drcontext, void *tag,
                 if (events[i].kind == 0) {
                     dr_printf("Found a call of %s, but skipping\n",
                               events[i].name);
-                    continue; // monitor has no interest in this event
+                    continue;  // monitor has no interest in this event
                 }
                 dr_printf("Found a call of %s\n", events[i].name);
                 dr_insert_clean_call_ex(
@@ -395,3 +392,49 @@ static dr_emit_flags_t event_app_instruction(void *drcontext, void *tag,
     */
     return DR_EMIT_DEFAULT;
 }
+
+/*
+bool enumsym(const char *name, size_t off, void *data) {
+    dr_printf("symbol: %s\n", name);
+    return true;
+}
+*/
+
+/* from instrcalls.c in DynamoRIO
+static void
+print_address(file_t f, app_pc addr, const char *prefix)
+{
+    drsym_error_t symres;
+    drsym_info_t sym;
+    char name[255];
+    char file[MAXIMUM_PATH];
+    module_data_t *data;
+    data = dr_lookup_module(addr);
+    if (data == NULL) {
+        dr_fprintf(f, "%s " PFX " ? ??:0\n", prefix, addr);
+        return;
+    }
+    sym.struct_size = sizeof(sym);
+    sym.name = name;
+    sym.name_size = 254;
+    sym.file = file;
+    sym.file_size = MAXIMUM_PATH;
+    symres = drsym_lookup_address(data->full_path, addr - data->start, &sym,
+                                  DRSYM_DEFAULT_FLAGS);
+    if (symres == DRSYM_SUCCESS || symres == DRSYM_ERROR_LINE_NOT_AVAILABLE) {
+        const char *modname = dr_module_preferred_name(data);
+        if (modname == NULL)
+            modname = "<noname>";
+        dr_fprintf(f, "%s " PFX " %s!%s+" PIFX, prefix, addr, modname, sym.name,
+                   addr - data->start - sym.start_offs);
+        if (symres == DRSYM_ERROR_LINE_NOT_AVAILABLE) {
+            dr_fprintf(f, " ??:0\n");
+        } else {
+            dr_fprintf(f, " %s:%" UINT64_FORMAT_CODE "+" PIFX "\n", sym.file,
+sym.line, sym.line_offs);
+        }
+    } else
+        dr_fprintf(f, "%s " PFX " ? ??:0\n", prefix, addr);
+    dr_free_module_data(data);
+}
+*/

@@ -6,17 +6,15 @@
 #include <regex.h>
 #include <string.h> /* memset */
 
-#include "dr_api.h"
-#include "drmgr.h"
-
+#include "../fastbuf/shm_monitored.h"
 #include "buffer.h"
 #include "client.h"
+#include "dr_api.h"
+#include "drmgr.h"
 #include "event.h"
 #include "signatures.h"
 #include "source.h"
 #include "streams/stream-drregex.h" /* event type */
-
-#include "../fastbuf/shm_monitored.h"
 
 #ifdef UNIX
 #if defined(MACOS) || defined(ANDROID)
@@ -190,32 +188,34 @@ static void parse_line(bool iswrite, per_thread_t *data, char *line) {
             }
 
             switch (*o) {
-            case 'c':
-                assert(len == 1);
-                addr = buffer_partial_push(
-                    shm, addr, (char *)(line + matches[m].rm_eo), sizeof(op.c));
-                break;
-            case 'i':
-                op.i = atoi(tmpline);
-                addr = buffer_partial_push(shm, addr, &op.i, sizeof(op.i));
-                break;
-            case 'l':
-                op.l = atol(tmpline);
-                addr = buffer_partial_push(shm, addr, &op.l, sizeof(op.l));
-                break;
-            case 'f':
-                op.f = atof(tmpline);
-                addr = buffer_partial_push(shm, addr, &op.f, sizeof(op.f));
-                break;
-            case 'd':
-                op.d = strtod(tmpline, NULL);
-                addr = buffer_partial_push(shm, addr, &op.d, sizeof(op.d));
-                break;
-            case 'S':
-                addr = buffer_partial_push_str(shm, addr, ev.base.id, tmpline);
-                break;
-            default:
-                assert(0 && "Invalid signature");
+                case 'c':
+                    assert(len == 1);
+                    addr = buffer_partial_push(
+                        shm, addr, (char *)(line + matches[m].rm_eo),
+                        sizeof(op.c));
+                    break;
+                case 'i':
+                    op.i = atoi(tmpline);
+                    addr = buffer_partial_push(shm, addr, &op.i, sizeof(op.i));
+                    break;
+                case 'l':
+                    op.l = atol(tmpline);
+                    addr = buffer_partial_push(shm, addr, &op.l, sizeof(op.l));
+                    break;
+                case 'f':
+                    op.f = atof(tmpline);
+                    addr = buffer_partial_push(shm, addr, &op.f, sizeof(op.f));
+                    break;
+                case 'd':
+                    op.d = strtod(tmpline, NULL);
+                    addr = buffer_partial_push(shm, addr, &op.d, sizeof(op.d));
+                    break;
+                case 'S':
+                    addr =
+                        buffer_partial_push_str(shm, addr, ev.base.id, tmpline);
+                    break;
+                default:
+                    assert(0 && "Invalid signature");
             }
         }
         buffer_finish_push(shm);
@@ -278,7 +278,6 @@ static void push_event(bool iswrite, per_thread_t *data, ssize_t retlen) {
             parse_line(iswrite, data, partial_line);
             partial_line_len = 0;
         } else {
-
             DR_ASSERT(*line_end == '\n');
             *line_end = 0; /* temporary end of line */
             parse_line(iswrite, data, line);
@@ -352,7 +351,8 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
         exprs_num, (const char **)names, (const char **)signatures);
     assert(control);
 
-    shm = create_shared_buffer(shmkey, control);
+    const size_t capacity = 256;
+    shm = create_shared_buffer(shmkey, capacity, control);
     assert(shm);
     events = buffer_get_avail_events(shm, &events_num);
     free(control);

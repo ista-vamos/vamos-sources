@@ -2,13 +2,14 @@
 // Copyright (c) 2020 Anton Protopopov
 //
 // Based on syscount(8) from BCC by Sasha Goldshtein
-#include <vmlinux.h>
-
 #include "syswrite.h"
-#include "maps.bpf.h"
+
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
+#include <vmlinux.h>
+
+#include "maps.bpf.h"
 
 const volatile pid_t filter_pid = 0;
 size_t dropped = 0;
@@ -74,7 +75,7 @@ int sys_write(struct trace_event_raw_sys_enter *ctx) {
 
     int fd = ctx->args[0];
     if (fd != 1) {
-        return 0; // not interested
+        return 0;  // not interested
     }
 
     size_t count = ctx->args[2];
