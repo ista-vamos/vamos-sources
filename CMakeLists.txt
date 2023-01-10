@@ -1,3 +1,15 @@
+cmake_minimum_required(VERSION 3.9)
+project(vamos-sources LANGUAGES C VERSION 0.1)
+
+set(CMAKE_VERBOSE_MAKEFILE 1)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+find_package(shamon REQUIRED)
+
+include_directories(${shamon_INCLUDE_DIRS})
+
 if (LLVM_SOURCES)
 add_subdirectory(llvm)
 endif()
