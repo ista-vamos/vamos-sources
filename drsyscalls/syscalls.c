@@ -6,7 +6,6 @@
 
 #include "dr_api.h"
 #include "drmgr.h"
-#include "fastbuf/shm_monitored.h"
 
 #ifdef UNIX
 #if defined(MACOS) || defined(ANDROID)

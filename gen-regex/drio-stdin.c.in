@@ -16,8 +16,6 @@
 #include "source.h"
 #include "streams/stream-drregex.h" /* event type */
 
-#include "../fastbuf/shm_monitored.h"
-
 #ifdef UNIX
 #if defined(MACOS) || defined(ANDROID)
 #include <sys/syscall.h>

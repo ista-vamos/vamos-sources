@@ -4,13 +4,14 @@
 
 #include <assert.h>
 #include <regex.h>
+#include <stdatomic.h>
 #include <string.h> /* memset */
 
-#include "../fastbuf/shm_monitored.h"
-#include "buffer.h"
-#include "client.h"
 #include "dr_api.h"
 #include "drmgr.h"
+
+#include "buffer.h"
+#include "client.h"
 #include "event.h"
 #include "signatures.h"
 #include "source.h"
@@ -294,13 +295,22 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
     (void)id;
     dr_set_client_name("Shamon intercept write and read syscalls",
                        "http://...");
+    if (dr_is_notify_on()) {
+        dr_fprintf(STDERR, "[shamon-info]: starting DrRegex\n");
+    }
+
+    if (argc < 5 && (argc - 2) % 3 != 0) {
+        usage_and_exit(1);
+    }
+
+    exprs_num = (argc - 1) / 3;
+    if (exprs_num == 0) {
+        usage_and_exit(1);
+    }
+
     drmgr_init();
     write_sysnum = get_write_sysnum();
     read_sysnum = get_read_sysnum();
-    dr_register_filter_syscall_event(event_filter_syscall);
-    drmgr_register_pre_syscall_event(event_pre_syscall);
-    drmgr_register_post_syscall_event(event_post_syscall);
-    dr_register_exit_event(event_exit);
     tcls_idx = drmgr_register_cls_field(event_thread_context_init,
                                         event_thread_context_exit);
     DR_ASSERT(tcls_idx != -1);
@@ -312,20 +322,17 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
 #endif
         dr_fprintf(STDERR, "Client DrRegex is running\n");
     }
-    if (argc < 5 && (argc - 2) % 3 != 0) {
-        usage_and_exit(1);
-    }
 
-    exprs_num = (argc - 1) / 3;
-    if (exprs_num == 0) {
-        usage_and_exit(1);
-    }
+    dr_register_filter_syscall_event(event_filter_syscall);
+    drmgr_register_pre_syscall_event(event_pre_syscall);
+    drmgr_register_post_syscall_event(event_post_syscall);
+    dr_register_exit_event(event_exit);
 
     const char *shmkey = argv[1];
     char *exprs[exprs_num];
     char *names[exprs_num];
-    signatures = dr_global_alloc(exprs_num * sizeof(char *));
-    re = dr_global_alloc(exprs_num * sizeof(regex_t));
+    signatures = malloc(exprs_num * sizeof(char *));
+    re = malloc(exprs_num * sizeof(regex_t));
 
     int arg_i = 2;
     for (int i = 0; i < (int)exprs_num; ++i) {
@@ -351,7 +358,10 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
         exprs_num, (const char **)names, (const char **)signatures);
     assert(control);
 
-    const size_t capacity = 256;
+    dr_fprintf(STDERR, "[shamon-info]: creating shared buffer '%s'\n", shmkey);
+    /* 8 pages for event size of 24 bytes */
+    /* FIXME: allow capacity to be specified in pages */
+    const size_t capacity = 1342;
     shm = create_shared_buffer(shmkey, capacity, control);
     assert(shm);
     events = buffer_get_avail_events(shm, &events_num);
@@ -366,8 +376,10 @@ static void event_exit(void) {
                                     event_thread_context_exit, tcls_idx) ||
         !drmgr_unregister_pre_syscall_event(event_pre_syscall) ||
         !drmgr_unregister_post_syscall_event(event_post_syscall))
-        DR_ASSERT(false && "failed to unregister");
+        DR_ASSERT(0 && "failed to unregister");
+
     drmgr_exit();
+
     dr_fprintf(STDERR,
                "info: sent %lu events, busy waited on buffer %lu cycles\n",
                ev.base.id, waiting_for_buffer);
@@ -403,7 +415,6 @@ static void event_thread_context_exit(void *drcontext, bool thread_exit) {
     per_thread_t *data =
         (per_thread_t *)drmgr_get_cls_field(drcontext, tcls_idx);
     dr_thread_free(drcontext, data, sizeof(per_thread_t));
-    // close_thread_buffer();
 }
 
 static bool event_filter_syscall(void *drcontext, int sysnum) {
