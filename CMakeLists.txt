@@ -10,8 +10,32 @@ find_package(shamon REQUIRED)
 
 include_directories(${shamon_INCLUDE_DIRS})
 
+OPTION(DYNAMORIO_SOURCES "Build sources based on DynamoRIO" ON)
+OPTION(BPF_SOURCES "Build and use eBPF sources" OFF)
+OPTION(LLVM_SOURCES "Build and use LLVM sources" ON)
+
+if (BPF_SOURCES)
+	ExternalProject_Add(bcc
+			    GIT_REPOSITORY https://github.com/mchalupa/bcc
+			    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bcc
+                            GIT_TAG readwrite
+			    INSTALL_COMMAND ""
+			    BUILD_IN_SOURCE 1)
+
+	add_compile_definitions(BPF_SOURCES)
+endif()
+
+if (DYNAMORIO_SOURCES)
+        find_package(DynamoRIO)
+        if (NOT DynamoRIO_FOUND)
+	        message(FATAL_ERROR
+                        "DynamoRIO package required to build DynamoRIO sources")
+        endif(NOT DynamoRIO_FOUND)
+endif()
+
+
 if (LLVM_SOURCES)
-add_subdirectory(llvm)
+	add_subdirectory(llvm)
 endif()
 
 if (DYNAMORIO_SOURCES)
