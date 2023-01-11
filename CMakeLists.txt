@@ -80,7 +80,7 @@ target_include_directories(regex PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(regex    PRIVATE shamon-client)
 target_link_libraries(sendaddr PRIVATE shamon-client)
 
-if (IPO)
+if (shamon_ENABLE_IPO)
         set_property(TARGET sendaddr PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
         set_property(TARGET regex PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
         set_property(TARGET regexd PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
