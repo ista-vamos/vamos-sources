@@ -4,42 +4,29 @@ import sys
 from subprocess import run, PIPE
 from os.path import dirname, abspath, basename
 
+sys.path.append('..')
+import config
+dir(config)
+
 DIR = abspath(dirname(sys.argv[0]))
-SHAMONDIR = f"{DIR}/../.."
 LLVM_PASS_DIR = f"{DIR}/../llvm"
 CFLAGS = [
     "-DDEBUG_STDOUT",  "-std=c11"
 ]
-SHAMON_INCLUDES = [f"-I{DIR}/../../"]
+SHAMON_INCLUDES = [f"-I{config.shamon_INCLUDE_DIRS}"]
 SHAMON_LIBS = [
-    f"{SHAMONDIR}/core/libshamon-arbiter.a",
-    f"{SHAMONDIR}/core/libshamon-stream.a",
-    f"{SHAMONDIR}/core/libshamon-source.a",
-    f"{SHAMONDIR}/shmbuf/libshamon-shmbuf.a",
-    f"{SHAMONDIR}/core/libshamon-parallel-queue.a",
-    f"{SHAMONDIR}/core/libshamon-ringbuf.a",
-    f"{SHAMONDIR}/core/libshamon-list.a",
-    f"{SHAMONDIR}/core/libshamon-signature.a",
-    f"{SHAMONDIR}/core/libshamon-event.a",
-    f"{SHAMONDIR}/core/libshamon-utils.a",
-    f"{SHAMONDIR}/streams/libshamon-streams.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-arbiter.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-stream.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-source.a",
+    f"{config.shamon_LIBRARIES_DIRS_shmbuf}/libshamon-shmbuf.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-parallel-queue.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-ringbuf.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-list.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-signature.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-event.a",
+    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-utils.a",
+    f"{config.shamon_LIBRARIES_DIRS_streams}/libshamon-streams.a",
 ]
-
-def get_build_type():
-    config = f"{SHAMONDIR}/shamonConfig.cmake"
-    with open(config, "r") as f:
-        for line in f:
-            if line.startswith("set( shamon_BUILD_TYPE"):
-                return line.split()[2]
-    return None
-
-def get_compiler():
-    config = f"{SHAMONDIR}/shamonConfig.cmake"
-    with open(config, "r") as f:
-        for line in f:
-            if line.startswith("set( shamon_C_COMPILER"):
-                return line.split()[2]
-    return None
 
 def get_llvm_version(cc="clang"):
     proc = run([cc, "--version"], stdout=PIPE)
@@ -122,7 +109,7 @@ def main(argv):
     opts = get_opts(argv)
     assert opts.files, "No input files given"
 
-    build_type = get_build_type()
+    build_type = config.shamon_BUILD_TYPE
     release = build_type == "Release"
     if build_type is None or release:
         CFLAGS.extend(("-g3", "-O3","-DNDEBUG"))
@@ -131,7 +118,7 @@ def main(argv):
         CFLAGS.append("-g")
         lto_flags = []
 
-    if build_type == "Release" and basename(get_compiler()) != "clang":
+    if build_type == "Release" and basename(config.shamon_C_COMPILER) != "clang":
         print("WARNING: Shamon was build in Release mode but not with clang. "\
               "It may cause troubles with linking.")
 

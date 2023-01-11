@@ -74,3 +74,7 @@ target_include_directories(regex PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(regex    PRIVATE shamon-client)
 target_link_libraries(sendaddr PRIVATE shamon-client)
 
+get_filename_component(shamon_DIR ${shamon_DIR} ABSOLUTE)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
+	       ${CMAKE_CURRENT_SOURCE_DIR}/config.py)
+

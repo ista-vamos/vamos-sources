@@ -1,0 +1,19 @@
+
+source_dir = "@CMAKE_CURRENT_SOURCE_DIR@"
+
+shamon_DIR         = "@shamon_DIR@"
+shamon_BINARY_DIR  = "@shamon_BINARY_DIR@"
+shamon_SOURCE_DIR  = "@shamon_SOURCE_DIR@"
+
+shamon_LIBRARIES_DIRS_core = "@shamon_LIBRARIES_DIRS_core@"
+shamon_LIBRARIES_DIRS_shmbuf = "@shamon_LIBRARIES_DIRS_shmbuf@"
+shamon_LIBRARIES_DIRS_streams = "@shamon_LIBRARIES_DIRS_streams@"
+shamon_INCLUDE_DIR = "@shamon_DIR@/../../include"
+
+shamon_BUILD_TYPE               = "@shamon_BUILD_TYPE@"
+shamon_C_COMPILER               = "@shamon_C_COMPILER@"
+
+shamon_ENABLE_IPO_OPTION        = "@shamon_ENABLE_IPO_OPTION@".upper()
+shamon_ENABLE_IPO = "@shamon_ENABLE_IPO@".upper()
+shamon_OPTION_ENABLE_IPO = "@shamon_OPTION_ENABLE_IPO@".upper()
+
