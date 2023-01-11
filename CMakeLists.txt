@@ -11,6 +11,9 @@ find_package(shamon REQUIRED)
 include_directories(${shamon_INCLUDE_DIRS})
 
 OPTION(DYNAMORIO_SOURCES "Build sources based on DynamoRIO" ON)
+OPTION(BUILD_DYNAMORIO "Build DynamoRIO from sources" OFF)
+OPTION(BUILD_DYNAMORIO_IF_MISSING "Build DynamoRIO from sources if it is not present" ON)
+
 OPTION(BPF_SOURCES "Build and use eBPF sources" OFF)
 OPTION(LLVM_SOURCES "Build and use LLVM sources" ON)
 
@@ -26,11 +29,28 @@ if (BPF_SOURCES)
 endif()
 
 if (DYNAMORIO_SOURCES)
-        find_package(DynamoRIO)
-        if (NOT DynamoRIO_FOUND)
-	        message(FATAL_ERROR
-                        "DynamoRIO package required to build DynamoRIO sources")
-        endif(NOT DynamoRIO_FOUND)
+	message(STATUS "Checking DynamoRIO ...")
+	if (NOT BUILD_DYNAMORIO)
+       		find_package(DynamoRIO QUIET)
+       		if (NOT DynamoRIO_FOUND)
+			if (BUILD_DYNAMORIO_IF_MISSING)
+				message(STATUS "DynamoRIO not found, will build it")
+				set(BUILD_DYNAMORIO ON)
+			else()
+       		        	message(FATAL_ERROR
+       		                	"DynamoRIO package required to build DynamoRIO sources")
+			endif()
+       		endif()
+	endif()
+
+	if (BUILD_DYNAMORIO)
+		message(STATUS "Building DynamoRIO from sources")
+		execute_process(
+			COMMAND make -C ext CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} dynamorio
+		)
+		find_package(DynamoRIO REQUIRED
+			PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ext/dynamorio/build/cmake)
+	endif()
 endif()
 
 
