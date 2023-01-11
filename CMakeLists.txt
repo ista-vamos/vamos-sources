@@ -51,6 +51,7 @@ if (DYNAMORIO_SOURCES)
 		message(STATUS "Building DynamoRIO from sources")
 		execute_process(
 			COMMAND make -C ext CMAKE_C_COMPILER=${CMAKE_C_COMPILER} CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} dynamorio
+			COMMAND_ERROR_IS_FATAL ANY
 		)
 		find_package(DynamoRIO REQUIRED
 			PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ext/dynamorio/build/cmake)
