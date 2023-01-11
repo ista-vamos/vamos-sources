@@ -53,8 +53,11 @@ if (DYNAMORIO_SOURCES)
 		message(STATUS "Building DynamoRIO from sources")
 		execute_process(
 			COMMAND make -C ext dynamorio CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-			COMMAND_ERROR_IS_FATAL ANY
+			RESULT_VARIABLE drio_built
 		)
+		if (NOT drio_built EQUAL 0)
+			message(FATAL_ERROR "Failed building DynamoRIO")
+		endif()
 		get_filename_component(DRIO_ABSPATH "ext/dynamorio/build/cmake" ABSOLUTE)
 		message(STATUS "DynamoRIO built's config is in '${DRIO_ABSPATH}'")
 		set(DynamoRIO_DIR ${DRIO_ABSPATH})
