@@ -8,6 +8,10 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 find_package(shamon REQUIRED)
 
+if (shamon_ENABLE_IPO)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  
+endif()
+
 include_directories(${shamon_INCLUDE_DIRS})
 
 OPTION(DYNAMORIO_SOURCES "Build sources based on DynamoRIO" ON)
@@ -80,7 +84,3 @@ target_include_directories(regex PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(regex    PRIVATE shamon-client)
 target_link_libraries(sendaddr PRIVATE shamon-client)
 
-if (shamon_ENABLE_IPO)
-        set_property(TARGET sendaddr PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-        set_property(TARGET regex PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif()

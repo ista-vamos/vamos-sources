@@ -30,7 +30,6 @@ target_compile_definitions(drregex-mt PUBLIC -D_POSIX_C_SOURCE=200809L)
 use_DynamoRIO_extension(drregex-mt drmgr)
 configure_DynamoRIO_client(drregex-mt)
 
-
 include_directories("${CMAKE_SOURCE_DIR}")
 include_directories("${CMAKE_SOURCE_DIR}/shmbuf")
 include_directories("${CMAKE_SOURCE_DIR}/streams")
