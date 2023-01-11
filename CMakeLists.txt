@@ -33,36 +33,18 @@ if (BPF_SOURCES)
 endif()
 
 if (DYNAMORIO_SOURCES)
-	message(STATUS "Checking DynamoRIO ...")
-	if (NOT BUILD_DYNAMORIO)
-       		find_package(DynamoRIO QUIET)
-       		if (NOT DynamoRIO_FOUND)
-			if (BUILD_DYNAMORIO_IF_MISSING)
-				message(STATUS "DynamoRIO not found, will build it")
-				set(BUILD_DYNAMORIO ON)
-			else()
-       		        	message(FATAL_ERROR
-					"DynamoRIO package required to build DynamoRIO sources. "
-					"If you have DynamoRIO built, use DynamoRIO_DIR=<path> to point to the cmake config. "
-					"If you want to build DynamoRIO, use BUILD_DYNAMORIO=ON option.")
-			endif()
-       		endif()
-	endif()
-
-	if (BUILD_DYNAMORIO)
-		message(STATUS "Building DynamoRIO from sources")
-		execute_process(
-			COMMAND make -C ext dynamorio CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-			RESULT_VARIABLE drio_built
-		)
-		if (NOT drio_built EQUAL 0)
-			message(FATAL_ERROR "Failed building DynamoRIO")
-		endif()
 		get_filename_component(DRIO_ABSPATH "ext/dynamorio/build/cmake" ABSOLUTE)
-		message(STATUS "DynamoRIO built's config is in '${DRIO_ABSPATH}'")
-		set(DynamoRIO_DIR ${DRIO_ABSPATH})
-		find_package(DynamoRIO REQUIRED)
-	endif()
+		find_package(DynamoRIO QUIET PATHS DRIO_ABSPATH)
+       		if (NOT DynamoRIO_FOUND)
+       		        message(FATAL_ERROR
+				"DynamoRIO package required to build DynamoRIO sources. "
+				"If you have DynamoRIO built, use DynamoRIO_DIR=<path> to point to the cmake config. "
+				"If you want to build DynamoRIO, you can use the following command:\n"
+				"make -C ext dynamorio CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}\n"
+				"If cmake cannot find dynamorio then, try configuring  with -DDynamoRIO_DIR=ext/dynamorio/build/cmake".
+				" You can disable building DynamoRIO sources with -DDYNAMORIO_SOURCES=OFF")
+       		endif()
+
 endif()
 
 
