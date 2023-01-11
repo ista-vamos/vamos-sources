@@ -16,7 +16,7 @@ include_directories(${shamon_INCLUDE_DIRS})
 
 OPTION(DYNAMORIO_SOURCES "Build sources based on DynamoRIO" ON)
 OPTION(BUILD_DYNAMORIO "Build DynamoRIO from sources" OFF)
-OPTION(BUILD_DYNAMORIO_IF_MISSING "Build DynamoRIO from sources if it is not present" ON)
+OPTION(BUILD_DYNAMORIO_IF_MISSING "Build DynamoRIO from sources if it is not present" OFF)
 
 OPTION(BPF_SOURCES "Build and use eBPF sources" OFF)
 OPTION(LLVM_SOURCES "Build and use LLVM sources" ON)
@@ -42,7 +42,9 @@ if (DYNAMORIO_SOURCES)
 				set(BUILD_DYNAMORIO ON)
 			else()
        		        	message(FATAL_ERROR
-       		                	"DynamoRIO package required to build DynamoRIO sources")
+					"DynamoRIO package required to build DynamoRIO sources. "
+					"If you have DynamoRIO built, use DynamoRIO_DIR=<path> to point to the cmake config. "
+					"If you want to build DynamoRIO, use BUILD_DYNAMORIO=ON option.")
 			endif()
        		endif()
 	endif()
@@ -53,8 +55,10 @@ if (DYNAMORIO_SOURCES)
 			COMMAND make -C ext CMAKE_C_COMPILER=${CMAKE_C_COMPILER} CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} dynamorio
 			COMMAND_ERROR_IS_FATAL ANY
 		)
-		find_package(DynamoRIO REQUIRED
-			PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ext/dynamorio/build/cmake)
+		get_filename_component(DRIO_ABSPATH "ext/dynamorio/build/cmake" ABSOLUTE)
+		message(STATUS "DynamoRIO built's config is in '${DRIO_ABSPATH}'")
+		set(DynamoRIO_DIR ${DRIO_ABSPATH})
+		find_package(DynamoRIO REQUIRED)
 	endif()
 endif()
 
