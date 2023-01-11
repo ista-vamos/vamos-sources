@@ -52,7 +52,7 @@ if (DYNAMORIO_SOURCES)
 	if (BUILD_DYNAMORIO)
 		message(STATUS "Building DynamoRIO from sources")
 		execute_process(
-			COMMAND make -C ext CMAKE_C_COMPILER=${CMAKE_C_COMPILER} CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} dynamorio
+			COMMAND make -C ext dynamorio CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 			COMMAND_ERROR_IS_FATAL ANY
 		)
 		get_filename_component(DRIO_ABSPATH "ext/dynamorio/build/cmake" ABSOLUTE)
