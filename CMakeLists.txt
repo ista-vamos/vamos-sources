@@ -75,6 +75,15 @@ target_link_libraries(regex    PRIVATE shamon-client)
 target_link_libraries(sendaddr PRIVATE shamon-client)
 
 get_filename_component(shamon_DIR ${shamon_DIR} ABSOLUTE)
+get_target_property(shamon_shamon-lib shamon-lib LOCATION)
+get_target_property(shamon_shamon-ringbuf shamon-ringbuf LOCATION)
+get_target_property(shamon_shamon-shmbuf shamon-shmbuf LOCATION)
+get_target_property(shamon_shamon-streams shamon-streams LOCATION)
+get_filename_component(shamon_LIBRARIES_DIRS_lib ${shamon_shamon-lib} DIRECTORY)
+get_filename_component(shamon_LIBRARIES_DIRS_core ${shamon_shamon-ringbuf} DIRECTORY)
+get_filename_component(shamon_LIBRARIES_DIRS_shmbuf ${shamon_shamon-shmbuf} DIRECTORY)
+get_filename_component(shamon_LIBRARIES_DIRS_streams ${shamon_shamon-streams} DIRECTORY)
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 	       ${CMAKE_CURRENT_SOURCE_DIR}/config.py)
 

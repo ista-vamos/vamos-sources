@@ -4,16 +4,15 @@ import sys
 from subprocess import run, PIPE
 from os.path import dirname, abspath, basename
 
-sys.path.append('..')
+sys.path.append(f"{abspath(dirname(__file__))}/..")
 import config
-dir(config)
 
 DIR = abspath(dirname(sys.argv[0]))
 LLVM_PASS_DIR = f"{DIR}/../llvm"
 CFLAGS = [
     "-DDEBUG_STDOUT",  "-std=c11"
 ]
-SHAMON_INCLUDES = [f"-I{config.shamon_INCLUDE_DIRS}"]
+SHAMON_INCLUDES = [f"-I{config.shamon_INCLUDE_DIR}"]
 SHAMON_LIBS = [
     f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-arbiter.a",
     f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-stream.a",

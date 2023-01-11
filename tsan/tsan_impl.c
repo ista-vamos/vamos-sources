@@ -17,11 +17,11 @@
 #include <stdio.h>
 #endif
 
-#include "core/list-embedded.h"
-#include "core/source.h"
-#include "core/utils.h"
-#include "shmbuf/buffer.h"
-#include "shmbuf/client.h"
+#include "shamon/core/list-embedded.h"
+#include "shamon/core/source.h"
+#include "shamon/core/utils.h"
+#include "shamon/shmbuf/buffer.h"
+#include "shamon/shmbuf/client.h"
 
 static CACHELINE_ALIGNED _Atomic size_t last_thread_id = 1;
 static CACHELINE_ALIGNED _Atomic size_t timestamp = 1;
