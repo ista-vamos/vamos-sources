@@ -10,7 +10,8 @@ import config
 DIR = abspath(dirname(sys.argv[0]))
 LLVM_PASS_DIR = f"{DIR}/../llvm"
 CFLAGS = [
-    "-DDEBUG_STDOUT",  "-std=c11"
+   #"-DDEBUG_STDOUT",
+    "-std=c11"
 ]
 SHAMON_INCLUDES = [f"-I{config.shamon_INCLUDE_DIR}"]
 SHAMON_LIBS = [
@@ -109,7 +110,7 @@ def main(argv):
     assert opts.files, "No input files given"
 
     build_type = config.shamon_BUILD_TYPE
-    release = build_type == "Release"
+    release = build_type in ("Release", "RelWithDebInfo")
     if build_type is None or release:
         CFLAGS.extend(("-g3", "-O3","-DNDEBUG"))
         lto_flags = ["-flto", "-fno-fat-lto-objects"]
@@ -117,7 +118,7 @@ def main(argv):
         CFLAGS.append("-g")
         lto_flags = []
 
-    if build_type == "Release" and basename(config.shamon_C_COMPILER) != "clang":
+    if release and basename(config.shamon_C_COMPILER) != "clang":
         print("WARNING: Shamon was build in Release mode but not with clang. "\
               "It may cause troubles with linking.")
 
