@@ -10,11 +10,11 @@
 
 #include "btf_helpers.h"
 #include "errno_helpers.h"
-#include "shamon/core/event.h"
-#include "shamon/core/signatures.h"
-#include "shamon/core/source.h"
-#include "shamon/shmbuf/buffer.h"
-#include "shamon/shmbuf/client.h"
+#include "vamos-buffers/core/event.h"
+#include "vamos-buffers/core/signatures.h"
+#include "vamos-buffers/core/source.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
 #include "syswrite.skel.h"
 #include "trace_helpers.h"
 

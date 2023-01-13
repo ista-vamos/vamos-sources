@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "shamon/core/event.h"
-#include "shamon/shmbuf/buffer.h"
-#include "shamon/shmbuf/client.h"
-#include "shamon/core/signatures.h"
-#include "shamon/core/source.h"
+#include "vamos-buffers/core/event.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
+#include "vamos-buffers/core/signatures.h"
+#include "vamos-buffers/core/source.h"
 
 #define MAXMATCH 20
 

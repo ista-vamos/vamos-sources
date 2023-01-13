@@ -52,8 +52,8 @@
 #include "drsyms.h"
 #endif
 
-#include "shamon/shmbuf/buffer.h"
-#include "shamon/shmbuf/client.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
 
 #ifdef WINDOWS
 #define IF_WINDOWS(x) x
@@ -61,10 +61,10 @@
 #define IF_WINDOWS(x) /* nothing */
 #endif
 
-#include "shamon/core/event.h" /* shm_event_dropped */
-#include "shamon/core/signatures.h"
-#include "shamon/core/source.h"
-#include "shamon/streams/stream-funs.h"
+#include "vamos-buffers/core/event.h" /* shm_event_dropped */
+#include "vamos-buffers/core/signatures.h"
+#include "vamos-buffers/core/source.h"
+#include "vamos-buffers/streams/stream-funs.h"
 
 static void event_exit(void);
 

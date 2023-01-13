@@ -6,13 +6,13 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-find_package(shamon REQUIRED)
+find_package(vamos-buffers REQUIRED)
 
-if (shamon_ENABLE_IPO)
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  
+if (vamos-buffers_OPTION_ENABLE_IPO)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-include_directories(${shamon_INCLUDE_DIRS})
+include_directories(${vamos_buffers_INCLUDE_DIRS})
 
 OPTION(DYNAMORIO_SOURCES "Build sources based on DynamoRIO" ON)
 OPTION(BUILD_DYNAMORIO "Build DynamoRIO from sources" OFF)
@@ -71,18 +71,18 @@ target_include_directories(sendaddr PRIVATE ${CMAKE_SOURCE_DIR})
 
 target_include_directories(regex PRIVATE ${CMAKE_SOURCE_DIR})
 
-target_link_libraries(regex    PRIVATE shamon-client)
-target_link_libraries(sendaddr PRIVATE shamon-client)
+target_link_libraries(regex    PRIVATE vamos-buffers-client)
+target_link_libraries(sendaddr PRIVATE vamos-buffers-client)
 
-get_filename_component(shamon_DIR ${shamon_DIR} ABSOLUTE)
-get_target_property(shamon_shamon-lib shamon-lib LOCATION)
-get_target_property(shamon_shamon-ringbuf shamon-ringbuf LOCATION)
-get_target_property(shamon_shamon-shmbuf shamon-shmbuf LOCATION)
-get_target_property(shamon_shamon-streams shamon-streams LOCATION)
-get_filename_component(shamon_LIBRARIES_DIRS_lib ${shamon_shamon-lib} DIRECTORY)
-get_filename_component(shamon_LIBRARIES_DIRS_core ${shamon_shamon-ringbuf} DIRECTORY)
-get_filename_component(shamon_LIBRARIES_DIRS_shmbuf ${shamon_shamon-shmbuf} DIRECTORY)
-get_filename_component(shamon_LIBRARIES_DIRS_streams ${shamon_shamon-streams} DIRECTORY)
+get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
+get_target_property(vamos-buffers_vamos-buffers-lib vamos-buffers-lib LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-ringbuf vamos-buffers-ringbuf LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-shmbuf vamos-buffers-shmbuf LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-streams vamos-buffers-streams LOCATION)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_lib ${vamos-buffers_vamos-buffers-lib} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_core ${vamos-buffers_vamos-buffers-ringbuf} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_shmbuf ${vamos-buffers_vamos-buffers-shmbuf} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_streams ${vamos-buffers_vamos-buffers-streams} DIRECTORY)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 	       ${CMAKE_CURRENT_SOURCE_DIR}/config.py)

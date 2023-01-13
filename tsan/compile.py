@@ -13,19 +13,19 @@ CFLAGS = [
    #"-DDEBUG_STDOUT",
     "-std=c11"
 ]
-SHAMON_INCLUDES = [f"-I{config.shamon_INCLUDE_DIR}"]
+SHAMON_INCLUDES = [f"-I{config.vamos_buffers_INCLUDE_DIR}"]
 SHAMON_LIBS = [
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-arbiter.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-stream.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-source.a",
-    f"{config.shamon_LIBRARIES_DIRS_shmbuf}/libshamon-shmbuf.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-parallel-queue.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-ringbuf.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-list.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-signature.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-event.a",
-    f"{config.shamon_LIBRARIES_DIRS_core}/libshamon-utils.a",
-    f"{config.shamon_LIBRARIES_DIRS_streams}/libshamon-streams.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-arbiter.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-stream.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-source.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_shmbuf}/libvamos-buffers-shmbuf.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-parallel-queue.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-ringbuf.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-list.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-signature.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-event.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-utils.a",
+    f"{config.vamos_buffers_LIBRARIES_DIRS_streams}/libvamos-buffers-streams.a",
 ]
 
 def get_llvm_version(cc="clang"):
@@ -109,7 +109,7 @@ def main(argv):
     opts = get_opts(argv)
     assert opts.files, "No input files given"
 
-    build_type = config.shamon_BUILD_TYPE
+    build_type = config.vamos_buffers_BUILD_TYPE
     release = build_type in ("Release", "RelWithDebInfo")
     if build_type is None or release:
         CFLAGS.extend(("-g3", "-O3","-DNDEBUG"))
@@ -118,7 +118,7 @@ def main(argv):
         CFLAGS.append("-g")
         lto_flags = []
 
-    if release and basename(config.shamon_C_COMPILER) != "clang":
+    if release and basename(config.vamos_buffers_C_COMPILER) != "clang":
         print("WARNING: Shamon was build in Release mode but not with clang. "\
               "It may cause troubles with linking.")
 

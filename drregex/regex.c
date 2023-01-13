@@ -10,12 +10,12 @@
 #include "dr_api.h"
 #include "drmgr.h"
 
-#include "shamon/shmbuf/buffer.h"
-#include "shamon/shmbuf/client.h"
-#include "shamon/core/event.h"
-#include "shamon/core/signatures.h"
-#include "shamon/core/source.h"
-#include "shamon/streams/stream-drregex.h" /* event type */
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
+#include "vamos-buffers/core/event.h"
+#include "vamos-buffers/core/signatures.h"
+#include "vamos-buffers/core/source.h"
+#include "vamos-buffers/streams/stream-drregex.h" /* event type */
 
 #ifdef UNIX
 #if defined(MACOS) || defined(ANDROID)
