@@ -1,7 +1,7 @@
 #set(CORE_DIR ../../core)
 #set(SHMBUF_DIR ../../shmbuf)
 add_library(drregex SHARED regex.c)
-target_link_libraries(drregex shamon-client)
+target_link_libraries(drregex vamos-buffers-client)
 #add_library(drregex SHARED regex.c
 #                           ${SHMBUF_DIR}/buffer.c
 #                           ${SHMBUF_DIR}/buffer-aux.c ${SHMBUF_DIR}/buffer-sub.c
@@ -16,7 +16,7 @@ use_DynamoRIO_extension(drregex drmgr)
 configure_DynamoRIO_client(drregex)
 
 add_library(drregex-mt SHARED regex-mt.c)
-target_link_libraries(drregex-mt shamon-client)
+target_link_libraries(drregex-mt vamos-buffers-client)
 #add_library(drregex-mt SHARED regex-mt.c
 #                           ${SHMBUF_DIR}/buffer.c
 #                           ${SHMBUF_DIR}/buffer-aux.c ${SHMBUF_DIR}/buffer-sub.c

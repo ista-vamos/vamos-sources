@@ -1,5 +1,5 @@
 add_library(drregexrw SHARED regexrw.c)
-target_link_libraries(drregexrw shamon-shmbuf shamon-list shamon-signature)
+target_link_libraries(drregexrw vamos-buffers-shmbuf vamos-buffers-list vamos-buffers-signature)
 target_compile_options(drregexrw PUBLIC -Wno-pedantic -Wno-missing-field-initializers)
 
 use_DynamoRIO_extension(drregexrw drmgr)
