@@ -61,7 +61,7 @@ static inline uint64_t rt_timestamp(void) { return __rdtsc(); }
 const char *shmkey = "/vrd";
 static struct buffer *top_shmbuf;
 
-#define EVENTS_NUM 10
+#define EVENTS_NUM 12
 enum {
     EV_READ = 0,
     EV_WRITE = 1,
@@ -73,6 +73,8 @@ enum {
     EV_FREE = 7,
     EV_FORK = 8,
     EV_JOIN = 9,
+    EV_WRITE_N = 10,
+    EV_READ_N = 11
 };
 
 /* local cache */
@@ -121,13 +123,21 @@ static void setup_signals() {
 void __tsan_init() {
     /* Initialize the info about this source */
     top_control = source_control_define(
-        EVENTS_NUM, "read", "tl", "write", "tl", "atomicread", "tl",
+        EVENTS_NUM,
+	"read", "tl", "write", "tl", "atomicread", "tl",
         "atomicwrite", "tl", "lock", "tl", "unlock", "tl", "alloc", "tll",
-        "free", "tl", "fork", "tl", "join", "tl");
-    assert(top_control);
+        "free", "tl", "fork", "tl", "join", "tl",
+	"write_n", "tll", "read_n", "tll");
+    if (!top_control) {
+	    fprintf(stderr, "Failed creating source control object\n");
+	    abort();
+    }
 
     top_shmbuf = create_shared_buffer(shmkey, 512, top_control);
-    assert(top_shmbuf);
+    if (!top_control) {
+	    fprintf(stderr, "Failed creating top SHM buffer\n");
+	    abort();
+    }
 
     setup_signals();
 
@@ -320,41 +330,22 @@ void __tsan_read1(void *addr) {
 #endif
 }
 
-void __tsan_read2(void *addr) {
+void read_N(void *addr, size_t N) {
     struct buffer *shm = thread_data.shmbuf;
-    void *mem = start_event(shm, EV_READ);
-    buffer_partial_push(shm, mem, &addr, sizeof(addr));
+    void *mem = start_event(shm, EV_READ_N);
+    mem = buffer_partial_push(shm, mem, &addr, sizeof(addr));
+    buffer_partial_push(shm, mem, &N, sizeof(N));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: read2(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
+    printf("[%lu] thread %lu: read%lu(%p)\n", rt_timestamp(),
+           thread_data.thread_id, N, addr);
 #endif
 }
 
-void __tsan_read4(void *addr) {
-    struct buffer *shm = thread_data.shmbuf;
-    void *mem = start_event(shm, EV_READ);
-    buffer_partial_push(shm, mem, &addr, sizeof(addr));
-    buffer_finish_push(shm);
-
-#ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: read4(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
-#endif
-}
-
-void __tsan_read8(void *addr) {
-    struct buffer *shm = thread_data.shmbuf;
-    void *mem = start_event(shm, EV_READ);
-    buffer_partial_push(shm, mem, &addr, sizeof(addr));
-    buffer_finish_push(shm);
-
-#ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: read8(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
-#endif
-}
+void __tsan_read2(void *addr) { read_N(addr, 2); }
+void __tsan_read4(void *addr) { read_N(addr, 4); }
+void __tsan_read8(void *addr) { read_N(addr, 8); }
 
 void __tsan_write1(void *addr) {
     struct buffer *shm = thread_data.shmbuf;
@@ -368,45 +359,25 @@ void __tsan_write1(void *addr) {
 #endif
 }
 
-void __tsan_write2(void *addr) {
+void write_N(void *addr, size_t N) {
     struct buffer *shm = thread_data.shmbuf;
-    void *mem = start_event(shm, EV_WRITE);
-    buffer_partial_push(shm, mem, &addr, sizeof(addr));
+    void *mem = start_event(shm, EV_WRITE_N);
+    mem = buffer_partial_push(shm, mem, &addr, sizeof(addr));
+    buffer_partial_push(shm, mem, &N, sizeof(N));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: write2(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
+    printf("[%lu] thread %lu: write%lu(%p)\n", rt_timestamp(),
+           thread_data.thread_id, N, addr);
 #endif
 }
 
-void __tsan_write4(void *addr) {
-    struct buffer *shm = thread_data.shmbuf;
-    void *mem = start_event(shm, EV_WRITE);
-    buffer_partial_push(shm, mem, &addr, sizeof(addr));
-    buffer_finish_push(shm);
-
-#ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: write4(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
-#endif
-}
-
-void __tsan_write8(void *addr) {
-    struct buffer *shm = thread_data.shmbuf;
-    void *mem = start_event(shm, EV_WRITE);
-    buffer_partial_push(shm, mem, &addr, sizeof(addr));
-    buffer_finish_push(shm);
-
-#ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: write8(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
-#endif
-}
-
-void __tsan_unaligned_write8(void *addr) { __tsan_write8(addr); }
-void __tsan_unaligned_write4(void *addr) { __tsan_write4(addr); }
-void __tsan_unaligned_write2(void *addr) { __tsan_write2(addr); }
+void __tsan_write2(void *addr) { write_N(addr, 2); }
+void __tsan_write4(void *addr) { write_N(addr, 4); }
+void __tsan_write8(void *addr) { write_N(addr, 8); }
+void __tsan_unaligned_write8(void *addr) { write_N(addr, 8); }
+void __tsan_unaligned_write4(void *addr) { write_N(addr, 4); }
+void __tsan_unaligned_write2(void *addr) { write_N(addr, 2); }
 void __tsan_unaligned_write1(void *addr) { __tsan_write1(addr); }
 
 void __vrd_mutex_lock(void *addr) {
