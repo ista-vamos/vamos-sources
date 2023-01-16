@@ -121,6 +121,12 @@ static void setup_signals() {
 }
 
 void __tsan_init() {
+	/* this one is called for every module and that we do not want.
+	 * __vrd_init() is called just once */
+}
+
+static void __vrd_init(void) __attribute__((constructor));
+void __vrd_init() {
     /* Initialize the info about this source */
     top_control = source_control_define(
         EVENTS_NUM,
