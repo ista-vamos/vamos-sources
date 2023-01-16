@@ -120,6 +120,10 @@ static void setup_signals() {
     }
 }
 
+void __vrd_print_var(void *addr, const char *name) {
+    fprintf(stderr, "[dbg] addr %p -> '%s'\n", addr, name);
+}
+
 void __tsan_init() {
 	/* this one is called for every module and that we do not want.
 	 * __vrd_init() is called just once */
