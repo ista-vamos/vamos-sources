@@ -215,7 +215,7 @@ void *__vrd_create_thrd(void *original_data) {
     data->data = original_data;
     data->thread_id = tid;
     data->exited = false;
-    data->shmbuf = create_shared_sub_buffer(top_shmbuf, 0, top_control);
+    data->shmbuf = create_shared_sub_buffer(thread_data.shmbuf, 0, top_control);
     if (!data->shmbuf) {
         assert(data->shmbuf && "Failed creating buffer");
         abort();
