@@ -88,19 +88,17 @@ static void (*old_sigsegv_handler)(int);
 
 static void sig_handler(int sig) {
     printf("signal %d caught...\n", sig);
-    fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+
+    /* restore previous handlers */
+    signal(SIGABRT, old_sigabrt_handler);
+    signal(SIGIOT, old_sigiot_handler);
+    signal(SIGSEGV, old_sigsegv_handler);
 
     if (top_shmbuf) {
+	fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
         destroy_shared_buffer(top_shmbuf);
         top_shmbuf = NULL;
     }
-
-    if (sig == SIGABRT)
-        signal(sig, old_sigabrt_handler);
-    if (sig == SIGIOT)
-        signal(sig, old_sigiot_handler);
-    if (sig == SIGSEGV)
-        signal(sig, old_sigsegv_handler);
 }
 
 static void setup_signals() {
