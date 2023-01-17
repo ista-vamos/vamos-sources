@@ -142,6 +142,7 @@ def main(argv):
             opts.optcmd,
             "-load",
             f"{LLVM_PASS_DIR}/race-instrumentation.so",
+            #"-vamos-print-vars-addr",
             "-vamos-race-instrumentation",
             f"{output}.tmp2.bc",
             "-o",

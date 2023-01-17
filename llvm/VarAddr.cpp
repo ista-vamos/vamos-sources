@@ -72,7 +72,6 @@ struct VarAddr : public FunctionPass {
         std::vector<GlobalVariable *> old_globals;
         // this is stupid, FIXME
         for (auto &G : mod->globals()) {
-            errs() << "P " << G << "\n";
             old_globals.push_back(&G);
         }
 
@@ -80,11 +79,9 @@ struct VarAddr : public FunctionPass {
         assert(first_inst);
         auto& ctx = mod->getContext();
         for (auto *G : old_globals) {
-            errs() << "G " << *G << "\n";
             const auto &var_name = G->getName();
             if (var_name.startswith("__vrd") || var_name.startswith("llvm."))
                 continue;
-            errs() << "c " << *G << "\n";
 
             Constant *name = ConstantDataArray::getString(mod->getContext(), var_name, true);
             Constant *gname = new GlobalVariable(*mod, name->getType(), /* isConstant = */ true, GlobalValue::LinkageTypes::PrivateLinkage, name, "__vrd_var_name");
@@ -95,7 +92,6 @@ struct VarAddr : public FunctionPass {
             std::vector<Value *> args = {
                 cast, ConstantExpr::getPointerCast(gname, Type::getInt8PtrTy(ctx))};
             auto *call = CallInst::Create(fun, args, "", first_inst);
-            errs() << "C " << *cast << *call << "\n";
             cast->insertBefore(call);
             auto dbg = findFirstDbgLoc(first_inst);
             call->setDebugLoc(dbg);
@@ -111,7 +107,6 @@ struct VarAddr : public FunctionPass {
             if (!DI->getValue()->getType()->isPointerTy() || isa<UndefValue>(DI->getValue()))
                 return false;
 
-            errs() << I << "\n";
             auto *var = DI->getVariable();
             auto& ctx = mod->getContext();
 
