@@ -26,13 +26,13 @@ struct RaceInstrumentation : public FunctionPass {
         if (F.isDeclaration())
             return false;
         if (F.getName().startswith("tsan.")) {
-            errs() << "Skipping: ";
-            errs().write_escaped(F.getName()) << '\n';
+           //errs() << "Skipping: ";
+           //errs().write_escaped(F.getName()) << '\n';
             return false;
         }
 
-        errs() << "Instrumenting: ";
-        errs().write_escaped(F.getName()) << '\n';
+       //errs() << "Instrumenting: ";
+       //errs().write_escaped(F.getName()) << '\n';
 
         bool changed = false;
         for (auto &BB : F) {
@@ -235,8 +235,8 @@ void RaceInstrumentation::instrumentTSanFuncEntry(CallInst *call) {
     }
 
     if (!isThreadEntry(*fun)) {
-        errs() << "Ignoring func_entry in function " << fun->getName()
-               << " (not thread entry)\n";
+       //errs() << "Ignoring func_entry in function " << fun->getName()
+       //       << " (not thread entry)\n";
         return;
     }
 
