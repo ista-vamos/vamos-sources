@@ -48,6 +48,7 @@ class CompileOptions:
         self.optcmd = "opt"
         self.link_asm = []
         self.link_and_instrument = []
+        self.dbg = False
 
 
 def get_opts(argv):
@@ -82,6 +83,8 @@ def get_opts(argv):
         elif argv[i] == "-noinst":
             i += 1
             opts.files_noinst.append(argv[i])
+        elif argv[i] == "-dbg":
+            opts.dbg = True
         elif argv[i] == "-omp":
             i += 1
             opts.link_and_instrument.append(argv[i])
@@ -142,12 +145,12 @@ def main(argv):
             opts.optcmd,
             "-load",
             f"{LLVM_PASS_DIR}/race-instrumentation.so",
-            #"-vamos-print-vars-addr",
             "-vamos-race-instrumentation",
             f"{output}.tmp2.bc",
             "-o",
             f"{output}.tmp3.bc",
-        ] + opt_args
+        ] + (["-vamos-print-vars-addr"] if opts.dbg else []) +
+        opt_args
     )
 
     cmd(
@@ -160,6 +163,7 @@ def main(argv):
             "-o",
             f"{DIR}/tsan_impl.bc",
         ]
+        + (["-DDBGBUF"] if opts.dbg else [])
         + CFLAGS
         + SHAMON_INCLUDES
     )

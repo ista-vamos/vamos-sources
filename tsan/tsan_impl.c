@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdio.h>
+#include <string.h>
 #include <threads.h>
 #include <time.h>
 #include <signal.h>
@@ -60,6 +61,14 @@ static inline uint64_t rt_timestamp(void) { return __rdtsc(); }
 
 const char *shmkey = "/vrd";
 static struct buffer *top_shmbuf;
+#ifdef DBGBUF
+const char *dbgkey = "/vrd-vars";
+static size_t dbgbuf_size;
+static const size_t dbgbuf_capacity = 400;
+static const size_t dbgbuf_key_size = sizeof(void*);
+static const size_t dbgbuf_value_size = 24;
+static vms_shm_dbg_buffer *dbgbuf;
+#endif
 
 #define EVENTS_NUM 12
 enum {
@@ -99,6 +108,12 @@ static void sig_handler(int sig) {
         destroy_shared_buffer(top_shmbuf);
         top_shmbuf = NULL;
     }
+#ifdef DBGBUF
+    if (dbgbuf) {
+	vms_shm_dbg_buffer_release(dbgbuf);
+	dbgbuf = NULL;
+    }
+#endif
 }
 
 static void setup_signals() {
@@ -119,7 +134,24 @@ static void setup_signals() {
 }
 
 void __vrd_print_var(void *addr, const char *name) {
+#ifdef DBGBUF
     fprintf(stderr, "[dbg] addr %p -> '%s'\n", addr, name);
+    if (dbgbuf) {
+        if (dbgbuf_size >= dbgbuf_capacity)
+                return;
+        assert(vms_shm_dbg_buffer_size(dbgbuf) == dbgbuf_size);
+
+        unsigned char *data
+		= vms_shm_dbg_buffer_data(dbgbuf) + dbgbuf_size*(dbgbuf_key_size+dbgbuf_value_size);
+        memcpy((char*)data, &addr, dbgbuf_key_size);
+        strncpy((char*)data + dbgbuf_key_size, name, dbgbuf_value_size);
+        data[dbgbuf_key_size + dbgbuf_value_size - 1] = 0;
+
+        ++dbgbuf_size;
+        vms_shm_dbg_buffer_inc_size(dbgbuf, 1);
+        vms_shm_dbg_buffer_bump_version(dbgbuf);
+    }
+#endif
 }
 
 void __tsan_init() {
@@ -149,6 +181,10 @@ void __vrd_init() {
 
     setup_signals();
 
+#ifdef DBGBUF
+    dbgbuf = vms_shm_dbg_buffer_create(dbgkey, dbgbuf_capacity, dbgbuf_key_size, dbgbuf_value_size);
+#endif
+
     fprintf(stderr, "info: waiting for the monitor to attach... ");
     buffer_wait_for_monitor(top_shmbuf);
     fprintf(stderr, "done\n");
@@ -165,8 +201,6 @@ void __vrd_init() {
 
 static void __vrd_fini(void) __attribute__((destructor));
 void __vrd_fini(void) {
-    fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
-
     struct __vrd_thread_data *data, *tmp;
     shm_list_embedded_foreach_safe(data, tmp, &data_list, list) {
         fprintf(stderr, "Thread %lu leaked\n", data->thread_id);
@@ -276,7 +310,15 @@ void __vrd_thrd_exit(void) {
     */
 
     if (shm == top_shmbuf) {
+	fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
         destroy_shared_buffer(shm);
+        top_shmbuf = NULL;
+#ifdef DBGBUF
+	if (dbgbuf) {
+	    vms_shm_dbg_buffer_release(dbgbuf);
+	    dbgbuf = NULL;
+	}
+#endif
     } else {
         destroy_shared_sub_buffer(shm);
     }
@@ -354,6 +396,7 @@ void read_N(void *addr, size_t N) {
 void __tsan_read2(void *addr) { read_N(addr, 2); }
 void __tsan_read4(void *addr) { read_N(addr, 4); }
 void __tsan_read8(void *addr) { read_N(addr, 8); }
+void __tsan_read16(void *addr) { read_N(addr, 16); }
 
 void __tsan_write1(void *addr) {
     struct buffer *shm = thread_data.shmbuf;
@@ -383,6 +426,8 @@ void write_N(void *addr, size_t N) {
 void __tsan_write2(void *addr) { write_N(addr, 2); }
 void __tsan_write4(void *addr) { write_N(addr, 4); }
 void __tsan_write8(void *addr) { write_N(addr, 8); }
+void __tsan_write16(void *addr) { write_N(addr, 16); }
+void __tsan_unaligned_write16(void *addr) { write_N(addr, 16); }
 void __tsan_unaligned_write8(void *addr) { write_N(addr, 8); }
 void __tsan_unaligned_write4(void *addr) { write_N(addr, 4); }
 void __tsan_unaligned_write2(void *addr) { write_N(addr, 2); }
