@@ -110,8 +110,15 @@ void RaceInstrumentation::instrumentThreadCreate(CallInst *call, Value *data) {
     // now insert a call that registers that a thread was created and pass there
     // our data and the thread identifier
     // create our data structure and pass it as data to the thread
+#if LLVM_VERSION_MAJOR < 15
     auto *tidType =
         cast<PointerType>(call->getOperand(0)->getType())->getContainedType(0);
+#else
+    errs() << "call " << *call << "\n";
+    errs() << "TID TYPE: " << *call->getOperand(0)->getType() << "\n";
+    auto *tidType =
+        cast<PointerType>(call->getOperand(0)->getType());
+#endif
     const FunctionCallee &created_fun =
         module->getOrInsertFunction("__vrd_thrd_created", Type::getVoidTy(ctx),
                                     Type::getInt8PtrTy(ctx), tidType);
