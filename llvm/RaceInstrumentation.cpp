@@ -114,8 +114,6 @@ void RaceInstrumentation::instrumentThreadCreate(CallInst *call, Value *data) {
     auto *tidType =
         cast<PointerType>(call->getOperand(0)->getType())->getContainedType(0);
 #else
-    errs() << "call " << *call << "\n";
-    errs() << "TID TYPE: " << *call->getOperand(0)->getType() << "\n";
     auto *tidType =
         cast<PointerType>(call->getOperand(0)->getType());
 #endif
