@@ -15,6 +15,7 @@
 
 #ifdef DEBUG_STDOUT
 #include <stdio.h>
+#define PRINT_PREFIX "[\033[37;2m%lu\033[0m] thread \033[36m%lu\033[0m: ts \033[31m%3lu\033[0m"
 #endif
 
 #include "vamos-buffers/core/list-embedded.h"
@@ -289,12 +290,15 @@ void __vrd_thrd_created(void *data, uint64_t std_tid) {
     assert(shm && "Do not have SHM buffer");
     void *addr = start_event(shm, EV_FORK);
     buffer_partial_push(shm, addr, &tdata->thread_id, sizeof(tdata->thread_id));
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)addr) - sizeof(size_t));
+#endif
     buffer_finish_push(shm);
 
     tdata->std_thread_id = std_tid;
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: created thread %lu\n", rt_timestamp(), thread_data.thread_id, tdata->thread_id);
+    fprintf(stderr, PRINT_PREFIX " created thread %lu\n", rt_timestamp(), thread_data.thread_id, ts, tdata->thread_id);
 #endif
 }
 
@@ -317,9 +321,9 @@ void *__vrd_thrd_entry(void *data) {
     assert(tdata->shmbuf && "Do not have SHM buffer");
     thread_data.shmbuf = tdata->shmbuf;
 
-#ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: started\n", rt_timestamp(), thread_data.thread_id);
-#endif
+/*#ifdef DEBUG_STDOUT                                                                        */
+/*    fprintf(stderr, PRINT_PREFIX " started\n", rt_timestamp(), thread_data.thread_id, 0UL);*/
+/*#endif                                                                                     */
     return tdata->data;
 }
 
@@ -349,9 +353,9 @@ void __vrd_thrd_exit(void) {
         destroy_shared_sub_buffer(shm);
     }
 
-#ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: exitting\n", rt_timestamp(), thread_data.thread_id);
-#endif
+/*#ifdef DEBUG_STDOUT                                                                         */
+/*    fprintf(stderr, PRINT_PREFIX " exitting\n", rt_timestamp(), thread_data.thread_id, 0UL);*/
+/*#endif                                                                                      */
 }
 
 struct __vrd_thread_data *get_data(uint64_t std_tid) {
@@ -382,6 +386,10 @@ void __vrd_thrd_joined(void *dataptr) {
     struct __vrd_thread_data *data = (struct __vrd_thread_data *)dataptr;
     struct buffer *shm = thread_data.shmbuf;
     void *addr = start_event(shm, EV_JOIN);
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)addr) - sizeof(size_t));
+    size_t tid = data->thread_id;
+#endif
     buffer_partial_push(shm, addr, &data->thread_id, sizeof(&data->thread_id));
     buffer_finish_push(shm);
 
@@ -389,32 +397,38 @@ void __vrd_thrd_joined(void *dataptr) {
     free(data);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: joined %lu\n", rt_timestamp(), thread_data.thread_id, data->thread_id);
+    fprintf(stderr, PRINT_PREFIX " joined %lu\n", rt_timestamp(), thread_data.thread_id, ts, tid);
 #endif
 }
 
 void __tsan_read1(void *addr) {
     struct buffer *shm = thread_data.shmbuf;
     void *mem = start_event(shm, EV_READ);
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)mem) - sizeof(size_t));
+#endif
     buffer_partial_push(shm, mem, &addr, sizeof(addr));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: read1(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
+    fprintf(stderr, PRINT_PREFIX " read1(%p)\n", rt_timestamp(),
+           thread_data.thread_id, ts, addr);
 #endif
 }
 
 void read_N(void *addr, size_t N) {
     struct buffer *shm = thread_data.shmbuf;
     void *mem = start_event(shm, EV_READ_N);
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)mem) - sizeof(size_t));
+#endif
     mem = buffer_partial_push(shm, mem, &addr, sizeof(addr));
     buffer_partial_push(shm, mem, &N, sizeof(N));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: read%lu(%p)\n", rt_timestamp(),
-           thread_data.thread_id, N, addr);
+    fprintf(stderr, PRINT_PREFIX " read%lu(%p)\n", rt_timestamp(),
+           thread_data.thread_id, ts, N, addr);
 #endif
 }
 
@@ -433,25 +447,31 @@ void __tsan_unaligned_read1(void *addr) { __tsan_read1(addr); }
 void __tsan_write1(void *addr) {
     struct buffer *shm = thread_data.shmbuf;
     void *mem = start_event(shm, EV_WRITE);
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)mem) - sizeof(size_t));
+#endif
     buffer_partial_push(shm, mem, &addr, sizeof(addr));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: write1(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
+    fprintf(stderr, PRINT_PREFIX " write1(%p)\n", rt_timestamp(),
+           thread_data.thread_id, ts, addr);
 #endif
 }
 
 void write_N(void *addr, size_t N) {
     struct buffer *shm = thread_data.shmbuf;
     void *mem = start_event(shm, EV_WRITE_N);
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)mem) - sizeof(size_t));
+#endif
     mem = buffer_partial_push(shm, mem, &addr, sizeof(addr));
     buffer_partial_push(shm, mem, &N, sizeof(N));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: write%lu(%p)\n", rt_timestamp(),
-           thread_data.thread_id, N, addr);
+    fprintf(stderr, PRINT_PREFIX " write%lu(%p)\n", rt_timestamp(),
+           thread_data.thread_id, ts, N, addr);
 #endif
 }
 
@@ -468,24 +488,30 @@ void __tsan_unaligned_write1(void *addr) { __tsan_write1(addr); }
 void __vrd_mutex_lock(void *addr) {
     struct buffer *shm = thread_data.shmbuf;
     void *mem = start_event(shm, EV_LOCK);
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)mem) - sizeof(size_t));
+#endif
     buffer_partial_push(shm, mem, &addr, sizeof(addr));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: mutex_lock(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
+    fprintf(stderr, PRINT_PREFIX " mutex_lock(%p)\n", rt_timestamp(),
+           thread_data.thread_id, ts, addr);
 #endif
 }
 
 void __vrd_mutex_unlock(void *addr) {
     struct buffer *shm = thread_data.shmbuf;
     void *mem = start_event(shm, EV_UNLOCK);
+#ifdef DEBUG_STDOUT
+    size_t ts = *(size_t*)(((unsigned char *)mem) - sizeof(size_t));
+#endif
     buffer_partial_push(shm, mem, &addr, sizeof(addr));
     buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu: mutex_unlock(%p)\n", rt_timestamp(),
-           thread_data.thread_id, addr);
+    fprintf(stderr, PRINT_PREFIX " mutex_unlock(%p)\n", rt_timestamp(),
+           thread_data.thread_id, ts, addr);
 #endif
 }
 
