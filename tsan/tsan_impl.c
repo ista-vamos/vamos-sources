@@ -104,14 +104,25 @@ static void sig_handler(int sig) {
     signal(SIGSEGV, old_sigsegv_handler);
 
     if (top_shmbuf) {
-	fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+        /* This is not atomic, but it works in most cases which is enough for us. */
+        fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+
+        struct __vrd_thread_data *data, *tmp;
+        shm_list_embedded_foreach_safe(data, tmp, &data_list, list) {
+           if (!data->exited) {
+               buffer_set_destroyed(data->shmbuf);
+           }
+        }
+
+        buffer_set_destroyed(top_shmbuf);
         destroy_shared_buffer(top_shmbuf);
         top_shmbuf = NULL;
+
     }
 #ifdef DBGBUF
     if (dbgbuf) {
-	vms_shm_dbg_buffer_release(dbgbuf);
-	dbgbuf = NULL;
+        vms_shm_dbg_buffer_release(dbgbuf);
+        dbgbuf = NULL;
     }
 #endif
 }
