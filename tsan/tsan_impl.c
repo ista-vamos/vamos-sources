@@ -199,7 +199,6 @@ void __vrd_init() {
     buffer_wait_for_monitor(top_shmbuf);
     fprintf(stderr, "done\n");
 
-    fprintf(stderr, "Creating events kinds cache... ");
     size_t num;
     struct event_record *events = buffer_get_avail_events(top_shmbuf, &num);
     assert(num == EVENTS_NUM && "Invalid number of events");
