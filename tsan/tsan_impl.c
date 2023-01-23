@@ -13,7 +13,6 @@
 #include <x86intrin.h>
 #endif
 
-#undef DEBUG_STDOUT
 #ifdef DEBUG_STDOUT
 #include <stdio.h>
 #endif

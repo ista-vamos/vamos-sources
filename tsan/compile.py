@@ -49,6 +49,7 @@ class CompileOptions:
         self.link_asm = []
         self.link_and_instrument = []
         self.dbg = False
+        self.dbg_events = False
 
 
 def get_opts(argv):
@@ -85,6 +86,8 @@ def get_opts(argv):
             opts.files_noinst.append(argv[i])
         elif argv[i] == "-dbg":
             opts.dbg = True
+        elif argv[i] == "-dbg-events":
+            opts.dbg_events = True
         elif argv[i] == "-omp":
             i += 1
             opts.link_and_instrument.append(argv[i])
@@ -164,6 +167,7 @@ def main(argv):
             f"{DIR}/tsan_impl.bc",
         ]
         + (["-DDBGBUF"] if opts.dbg else [])
+        + (["-DDEBUG_STDOUT"] if opts.dbg_events else [])
         + CFLAGS
         + SHAMON_INCLUDES
     )
