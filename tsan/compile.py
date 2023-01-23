@@ -134,7 +134,7 @@ def main(argv):
     compiled_files = [f"{file}.bc" for file in opts.files]
     for f, out in zip(opts.files, compiled_files):
         cmd(
-            [opts.clang, "-emit-llvm", "-c", "-fsanitize=thread", "-O0", "-o", f"{out}", f]
+            [opts.clang, "-emit-llvm", '-fgnu89-inline', "-D__inline=", "-c", "-fsanitize=thread", "-O0", "-o", f"{out}", f]
             + CFLAGS
             + opts.cflags
         )
