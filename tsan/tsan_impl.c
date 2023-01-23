@@ -114,7 +114,6 @@ static void sig_handler(int sig) {
         }
 
         buffer_set_destroyed(top_shmbuf);
-        destroy_shared_buffer(top_shmbuf);
         top_shmbuf = NULL;
 
     }
@@ -293,6 +292,10 @@ void __vrd_thrd_created(void *data, uint64_t std_tid) {
     buffer_finish_push(shm);
 
     tdata->std_thread_id = std_tid;
+
+#ifdef DEBUG_STDOUT
+    printf("[%lu] thread %lu: created thread %lu\n", rt_timestamp(), thread_data.thread_id, tdata->thread_id);
+#endif
 }
 
 /* Called at the beginning of the thread routine (or main) */
@@ -315,7 +318,7 @@ void *__vrd_thrd_entry(void *data) {
     thread_data.shmbuf = tdata->shmbuf;
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu started\n", rt_timestamp(), thread_data.thread_id);
+    printf("[%lu] thread %lu: started\n", rt_timestamp(), thread_data.thread_id);
 #endif
     return tdata->data;
 }
@@ -347,8 +350,7 @@ void __vrd_thrd_exit(void) {
     }
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] exitting thread %lu\n", rt_timestamp(),
-           thread_data.thread_id);
+    printf("[%lu] thread %lu: exitting\n", rt_timestamp(), thread_data.thread_id);
 #endif
 }
 
@@ -387,7 +389,7 @@ void __vrd_thrd_joined(void *dataptr) {
     free(data);
 
 #ifdef DEBUG_STDOUT
-    printf("[%lu] thread %lu joined\n", rt_timestamp(), thread_data.thread_id);
+    printf("[%lu] thread %lu: joined %lu\n", rt_timestamp(), thread_data.thread_id, data->thread_id);
 #endif
 }
 

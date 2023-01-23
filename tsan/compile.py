@@ -49,6 +49,8 @@ class CompileOptions:
         self.link_asm = []
         self.link_and_instrument = []
         self.dbg = False
+        self.asan = False
+        self.ubsan = False
         self.dbg_events = False
 
 
@@ -86,6 +88,10 @@ def get_opts(argv):
             opts.files_noinst.append(argv[i])
         elif argv[i] == "-dbg":
             opts.dbg = True
+        elif argv[i] == "-asan":
+            opts.asan = True
+        elif argv[i] == "-ubsan":
+            opts.ubsan = True
         elif argv[i] == "-dbg-events":
             opts.dbg_events = True
         elif argv[i] == "-omp":
@@ -138,6 +144,7 @@ def main(argv):
     for f, out in zip(opts.files, compiled_files):
         cmd(
             [opts.clang, "-emit-llvm", '-fgnu89-inline', "-D__inline=", "-c", "-fsanitize=thread", "-O0", "-o", f"{out}", f]
+            + (["-fsanitize=undefined"] if opts.ubsan else [])
             + CFLAGS
             + opts.cflags
         )
@@ -168,6 +175,8 @@ def main(argv):
         ]
         + (["-DDBGBUF"] if opts.dbg else [])
         + (["-DDEBUG_STDOUT"] if opts.dbg_events else [])
+        + (["-fsanitize=address"] if opts.asan else [])
+        + (["-fsanitize=undefined"] if opts.ubsan else [])
         + CFLAGS
         + SHAMON_INCLUDES
     )
@@ -175,6 +184,8 @@ def main(argv):
     for f, out in zip(opts.files_noinst, compiled_files_link):
         cmd(
             [opts.clang, "-emit-llvm", "-c", "-g", "-o", f"{out}", f]
+            + (["-fsanitize=address"] if opts.asan else [])
+            + (["-fsanitize=undefined"] if opts.ubsan else [])
             + CFLAGS
             + opts.cflags
         )
@@ -191,6 +202,8 @@ def main(argv):
         + CFLAGS)
     cmd(
         [opts.cc, "-pthread", f"{output}.tmp5.o", "-o", output]
+        + (["-fsanitize=address"] if opts.asan else [])
+        + (["-fsanitize=undefined"] if opts.ubsan else [])
         + opts.cflags
         + CFLAGS + lto_flags
         + SHAMON_LIBS
