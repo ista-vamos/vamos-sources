@@ -222,6 +222,19 @@ void __vrd_fini(void) {
         }
         free(data);
     }
+
+    if (top_shmbuf) {
+        /* This is not atomic, but it works in most cases which is enough for us. */
+        fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+        destroy_shared_buffer(top_shmbuf);
+        top_shmbuf = NULL;
+    }
+#ifdef DBGBUF
+    if (dbgbuf) {
+        vms_shm_dbg_buffer_release(dbgbuf);
+        dbgbuf = NULL;
+    }
+#endif
 }
 
 static inline void *start_event(struct buffer *shm, int type) {
