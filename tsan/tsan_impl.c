@@ -42,6 +42,8 @@ struct __vrd_thread_data {
     struct buffer *shmbuf;
     /* the thread exited? */
     bool exited;
+    /* a sync variable for syncronizing the startup with parent */
+    _Atomic int wait_for_parent;
 
     shm_list_embedded list;
 };
@@ -264,13 +266,13 @@ void __tsan_func_exit(void) {}
  */
 void *__vrd_create_thrd(void *original_data) {
     uint64_t tid = atomic_fetch_add(&last_thread_id, 1);
-    /* FIXME: we leak this memory */
     struct __vrd_thread_data *data = malloc(sizeof *data);
     assert(data && "Allocation failed");
 
     data->data = original_data;
     data->thread_id = tid;
     data->exited = false;
+    data->wait_for_parent = 0;
     data->shmbuf = create_shared_sub_buffer(thread_data.shmbuf, 0, top_control);
     if (!data->shmbuf) {
         assert(data->shmbuf && "Failed creating buffer");
@@ -294,6 +296,8 @@ void __vrd_thrd_created(void *data, uint64_t std_tid) {
 #endif
     buffer_finish_push(shm);
 
+    atomic_store_explicit(&tdata->wait_for_parent, 1, memory_order_release);
+
     tdata->std_thread_id = std_tid;
 
 #ifdef DEBUG_STDOUT
@@ -314,6 +318,12 @@ void *__vrd_thrd_entry(void *data) {
         thread_data.thread_id = 0;
         thread_data.shmbuf = top_shmbuf;
         return NULL;
+    }
+
+    while (!atomic_load_explicit(&tdata->wait_for_parent, memory_order_acquire)) {
+	/* wait until the parent thread sends the EV_FORK event
+	 * which must occur before any event in this thread */
+	_mm_pause();
     }
 
     thread_data.thread_id = tdata->thread_id;
