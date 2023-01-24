@@ -264,10 +264,11 @@ void __vrd_init() {
 
 static void __vrd_fini(void) __attribute__((destructor));
 void __vrd_fini(void) {
-  fprintf(stderr, "... fini()... \n");
   struct __vrd_thread_data *data, *tmp;
   VEC(leaked_threads, size_t);
+  VEC_INIT(leaked_threads);
   VEC(running_threads, size_t);
+  VEC_INIT(running_threads);
 
   lock();
   shm_list_embedded_foreach_safe(data, tmp, &data_list, list) {
@@ -289,6 +290,7 @@ void __vrd_fini(void) {
   if (top_shmbuf) {
     print_events_no = true;
     destroy_shared_buffer(top_shmbuf);
+
     assert(thread_data.shmbuf == top_shmbuf);
     thread_data.shmbuf = NULL;
     top_shmbuf = NULL;
@@ -303,7 +305,7 @@ void __vrd_fini(void) {
   }
   for (unsigned i = 0; i < VEC_SIZE(running_threads); ++i) {
     fprintf(stderr,
-            "[vamos] warning: thread %lu was still running when destroyed\n",
+            "[vamos] warning: thread %lu is still running (expect crash)\n",
             running_threads[i]);
   }
 #ifdef DBGBUF
@@ -424,15 +426,13 @@ void *__vrd_thrd_entry(void *data) {
 
 void __vrd_thrd_exit(void) {
   struct _thread_data *thr_data = &thread_data;
-  struct buffer *shm = thr_data->shmbuf;
 
-  if (shm == top_shmbuf) {
+  if (!thr_data->data) { /* the main thread */
     fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
     lock();
     if (top_shmbuf) {
       destroy_shared_buffer(top_shmbuf);
       top_shmbuf = NULL;
-      thr_data->data->shmbuf = NULL;
     }
 #ifdef DBGBUF
     if (dbgbuf) {
@@ -442,8 +442,8 @@ void __vrd_thrd_exit(void) {
 #endif
     unlock();
   } else {
+    struct buffer *shm;
     lock();
-    /* reload the value, it may have changed in the signal handler */
     shm = thr_data->data->shmbuf;
     if (shm) {
       destroy_shared_sub_buffer(shm);
