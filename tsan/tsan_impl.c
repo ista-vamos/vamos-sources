@@ -22,6 +22,7 @@
 #include "vamos-buffers/core/list-embedded.h"
 #include "vamos-buffers/core/source.h"
 #include "vamos-buffers/core/utils.h"
+#include "vamos-buffers/core/vector-macro.h"
 #include "vamos-buffers/shmbuf/buffer.h"
 #include "vamos-buffers/shmbuf/client.h"
 
@@ -96,28 +97,32 @@ shm_list_embedded data_list = {&data_list, &data_list};
 
 #ifdef LIST_LOCK_MTX
 static mtx_t list_mtx;
-static inline void list_lock() { mtx_lock(&list_mtx); }
-static inline bool list_try_lock() { mtx_try_lock(&list_mtx); }
-static inline void list_unlock() { mtx_unlock(&list_mtx); }
+static inline void lock() { mtx_lock(&list_mtx); }
+static inline bool try_lock() { mtx_try_lock(&list_mtx); }
+static inline void unlock() { mtx_unlock(&list_mtx); }
 #else
 /* An atomic spin lock (well, not exactly spin, we use _mm_pause() to wait
  * a tiny while). Similarly as mtx_t, it is not signal safe. */
-static CACHELINE_ALIGNED _Atomic bool list_locked = false;
+static CACHELINE_ALIGNED _Atomic bool __locked = false;
 
-static inline void list_lock() {
-  while (atomic_exchange_explicit(&list_locked, true, memory_order_acquire)) {
+static inline void _lock(_Atomic bool *_lock) {
+  while (atomic_exchange_explicit(_lock, true, memory_order_acquire)) {
     _mm_pause();
   }
 }
 
-static inline bool list_try_lock() {
-  return !atomic_exchange_explicit(&list_locked, true, memory_order_acquire);
+static inline bool _try_lock(_Atomic bool *_lock) {
+  return !atomic_exchange_explicit(_lock, true, memory_order_acquire);
 }
 
-static inline void list_unlock() {
-  atomic_store_explicit(&list_locked, false, memory_order_release);
+static inline void _unlock(_Atomic bool *_lock) {
+  atomic_store_explicit(_lock, false, memory_order_release);
 }
-#endif
+
+static inline void lock() { _lock(&__locked); }
+static inline bool try_lock() { return _try_lock(&__locked); }
+static inline void unlock() { _unlock(&__locked); }
+#endif /* LIST_LOCK_MTX */
 
 static void (*old_sigabrt_handler)(int);
 static void (*old_sigiot_handler)(int);
@@ -127,13 +132,14 @@ static void sig_handler(int sig) {
   printf("signal %d caught...\n", sig);
 
   struct __vrd_thread_data *data;
+  bool print_events_no = false;
   size_t n = 0;
-  while (!list_try_lock()) {
+  while (!try_lock()) {
     if (++n > 1000000) {
       /* This might mean that there is only the main thread left
        * and it was interupted inside a locked sequence.
-       * Therefore calling list_lock() would lead to a deadlock.
-       * Re-raise the signal to abort this handler and try later
+       * Therefore calling lock() would lead to a deadlock.
+       * Re-raise the signal and abort this handler to try later
        * (or let the main thread finish) */
       raise(sig);
       return;
@@ -141,18 +147,14 @@ static void sig_handler(int sig) {
   }
 
   shm_list_embedded_foreach(data, &data_list, list) {
-    buffer_set_destroyed(data->shmbuf);
+    if (data->shmbuf) {
+      buffer_set_destroyed(data->shmbuf);
+    }
   }
-  list_unlock();
-
-  /* restore previous handlers */
-  signal(SIGABRT, old_sigabrt_handler);
-  signal(SIGIOT, old_sigiot_handler);
-  signal(SIGSEGV, old_sigsegv_handler);
 
   if (top_shmbuf) {
     /* This is not atomic, but it works in most cases which is enough for us. */
-    fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+    print_events_no = true;
     buffer_set_destroyed(top_shmbuf);
     top_shmbuf = NULL;
   }
@@ -163,6 +165,18 @@ static void sig_handler(int sig) {
     dbgbuf = NULL;
   }
 #endif
+  unlock();
+
+  /* restore previous handlers -- threads now can fail on assertions
+     about using destroyed buffers, but we do not care anymore.
+     Buffers are disconnected and the program would be killed anyway. */
+  signal(SIGABRT, old_sigabrt_handler);
+  signal(SIGIOT, old_sigiot_handler);
+  signal(SIGSEGV, old_sigsegv_handler);
+
+  if (print_events_no) {
+    fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+  }
 }
 
 static void setup_signals() {
@@ -252,30 +266,45 @@ static void __vrd_fini(void) __attribute__((destructor));
 void __vrd_fini(void) {
   fprintf(stderr, "... fini()... \n");
   struct __vrd_thread_data *data, *tmp;
-  list_lock();
+  VEC(leaked_threads, size_t);
+  VEC(running_threads, size_t);
+
+  lock();
   shm_list_embedded_foreach_safe(data, tmp, &data_list, list) {
-    /* do this no matter if the data exited or not, because
-     * there is a race condition that we don't care much about,
-     * but in any case, we want to mark the buffer as destroyed */
-    buffer_set_destroyed(data->shmbuf);
     shm_list_embedded_remove(&data->list);
 
-    fprintf(stderr, "[vamos] warning: thread %lu leaked\n", data->thread_id);
+    VEC_PUSH(leaked_threads, &data->thread_id);
 
-    /* XXX: here is a race on writing/reading `exited` */
-    if (!data->exited) {
-      fprintf(stderr, "Thread %lu still running\n", data->thread_id);
+    if (data->shmbuf) {
+      VEC_PUSH(running_threads, &data->thread_id);
       destroy_shared_sub_buffer(data->shmbuf);
+      data->shmbuf = NULL;
     }
     free(data);
   }
-  list_unlock();
+  unlock();
 
+  bool print_events_no = false;
+  lock();
   if (top_shmbuf) {
-    /* This is not atomic, but it works in most cases which is enough for us. */
-    fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+    print_events_no = true;
     destroy_shared_buffer(top_shmbuf);
+    assert(thread_data.shmbuf == top_shmbuf);
+    thread_data.shmbuf = NULL;
     top_shmbuf = NULL;
+  }
+  unlock();
+
+  if (print_events_no) {
+    fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
+  }
+  for (unsigned i = 0; i < VEC_SIZE(leaked_threads); ++i) {
+    fprintf(stderr, "[vamos] warning: thread %lu leaked\n", leaked_threads[i]);
+  }
+  for (unsigned i = 0; i < VEC_SIZE(running_threads); ++i) {
+    fprintf(stderr,
+            "[vamos] warning: thread %lu was still running when destroyed\n",
+            running_threads[i]);
   }
 #ifdef DBGBUF
   if (dbgbuf) {
@@ -326,9 +355,9 @@ void *__vrd_create_thrd(void *original_data) {
     abort();
   }
 
-  list_lock();
+  lock();
   shm_list_embedded_insert_after(&data_list, &data->list);
-  list_unlock();
+  unlock();
 
   return data;
 }
@@ -396,27 +425,31 @@ void *__vrd_thrd_entry(void *data) {
 void __vrd_thrd_exit(void) {
   struct _thread_data *thr_data = &thread_data;
   struct buffer *shm = thr_data->shmbuf;
-  if (thr_data->data) {
-    thr_data->data->exited = true;
-  }
-  /*
-  void *addr = start_event(shm, EV_THRD_EXIT);
-  buffer_partial_push(shm, addr, &thread_data.thread_id,
-  sizeof(thread_data.thread_id)); buffer_finish_push(shm);
-  */
 
   if (shm == top_shmbuf) {
     fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
-    destroy_shared_buffer(shm);
-    top_shmbuf = NULL;
+    lock();
+    if (top_shmbuf) {
+      destroy_shared_buffer(top_shmbuf);
+      top_shmbuf = NULL;
+      thr_data->data->shmbuf = NULL;
+    }
 #ifdef DBGBUF
     if (dbgbuf) {
       vms_shm_dbg_buffer_release(dbgbuf);
       dbgbuf = NULL;
     }
 #endif
+    unlock();
   } else {
-    destroy_shared_sub_buffer(shm);
+    lock();
+    /* reload the value, it may have changed in the signal handler */
+    shm = thr_data->data->shmbuf;
+    if (shm) {
+      destroy_shared_sub_buffer(shm);
+      thr_data->data->shmbuf = NULL;
+    }
+    unlock();
   }
 
   /*#ifdef DEBUG_STDOUT */
@@ -436,9 +469,9 @@ static inline struct __vrd_thread_data *_get_data(uint64_t std_tid) {
 }
 
 struct __vrd_thread_data *get_data(uint64_t std_tid) {
-  list_lock();
+  lock();
   struct __vrd_thread_data *data = _get_data(std_tid);
-  list_unlock();
+  unlock();
   return data;
 }
 
@@ -466,9 +499,9 @@ void __vrd_thrd_joined(void *dataptr) {
   buffer_partial_push(shm, addr, &data->thread_id, sizeof(&data->thread_id));
   buffer_finish_push(shm);
 
-  list_lock();
+  lock();
   shm_list_embedded_remove(&data->list);
-  list_unlock();
+  unlock();
   free(data);
 
 #ifdef DEBUG_STDOUT
