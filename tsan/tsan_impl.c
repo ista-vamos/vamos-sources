@@ -67,7 +67,7 @@ static struct buffer *top_shmbuf;
 #ifdef DBGBUF
 const char *dbgkey = "/vrd-vars";
 static size_t dbgbuf_size;
-static const size_t dbgbuf_capacity = 400;
+static const size_t dbgbuf_capacity = 500;
 static const size_t dbgbuf_key_size = sizeof(void *);
 static const size_t dbgbuf_value_size = 24;
 static vms_shm_dbg_buffer *dbgbuf;
