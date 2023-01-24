@@ -46,21 +46,21 @@ struct RaceInstrumentation : public FunctionPass {
 
     bool runOnBasicBlock(BasicBlock &block);
 
-    void instrumentThreadCreate(CallInst *call, Value *data);
+    void instrumentThreadCreate(CallInst *call, int data_idx);
 
     void instrumentTSanFuncEntry(CallInst *call);
 
     void instrumentThreadFunExit(Function *fun);
 };
 
-static inline Value *getThreadCreateData(Function *fun, CallInst *call) {
+static inline int getThreadCreateDataIdx(Function *fun, CallInst *call) {
     if (fun->getName().equals("thrd_create")) {
-        return call->getOperand(2);
+        return 2;
     } else if (fun->getName().equals("pthread_create")) {
-        return call->getOperand(3);
+        return 3;
     }
 
-    return nullptr;
+    return -1;
 }
 
 static inline Value *getMutexLock(Function *fun, CallInst *call) {
@@ -93,9 +93,12 @@ static inline Value *getThreadJoinTid(Function *fun, CallInst *call) {
     return nullptr;
 }
 
-void RaceInstrumentation::instrumentThreadCreate(CallInst *call, Value *data) {
+void RaceInstrumentation::instrumentThreadCreate(CallInst *call, int data_idx) {
+    assert(data_idx >= 0);
     Module *module = call->getModule();
     LLVMContext &ctx = module->getContext();
+
+    Value *data = call->getOperand(data_idx);
 
     // create our data structure and pass it as data to the thread
     const FunctionCallee &vrd_fun = module->getOrInsertFunction(
@@ -104,8 +107,7 @@ void RaceInstrumentation::instrumentThreadCreate(CallInst *call, Value *data) {
     auto *tid_call = CallInst::Create(vrd_fun, args, "", call);
     tid_call->setDebugLoc(call->getDebugLoc());
 
-    // XXX: couldn't be the 'data' value used in more places?
-    call->replaceUsesOfWith(data, tid_call);
+    call->setOperand(data_idx, tid_call);
 
     // now insert a call that registers that a thread was created and pass there
     // our data and the thread identifier
@@ -305,6 +307,7 @@ void RaceInstrumentation::instrumentThreadFunExit(Function *fun) {
 
 bool RaceInstrumentation::runOnBasicBlock(BasicBlock &block) {
     std::vector<CallInst *> remove;
+    int data_idx = -1;
     for (auto &I : block) {
         if (CallInst *call = dyn_cast<CallInst>(&I)) {
             auto *calledop =
@@ -331,8 +334,8 @@ bool RaceInstrumentation::runOnBasicBlock(BasicBlock &block) {
             } else if (auto *mtx = getMutexUnlock(calledfun, call)) {
                 insertMutexLockOrUnlock(call, mtx, "__vrd_mutex_unlock",
                                         /* isunlock */ true);
-            } else if (auto *data = getThreadCreateData(calledfun, call)) {
-                instrumentThreadCreate(call, data);
+            } else if ((data_idx = getThreadCreateDataIdx(calledfun, call)) >= 0) {
+                instrumentThreadCreate(call, data_idx);
             } else if (auto *data = getThreadJoinTid(calledfun, call)) {
                 instrumentThreadJoin(call, data);
             } else if (isTSanFuncEntry(calledfun)) {
