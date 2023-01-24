@@ -10,7 +10,6 @@ import config
 DIR = abspath(dirname(sys.argv[0]))
 LLVM_PASS_DIR = f"{DIR}/../llvm"
 CFLAGS = [
-   #"-DDEBUG_STDOUT",
     "-std=c11"
 ]
 SHAMON_INCLUDES = [f"-I{config.vamos_buffers_INCLUDE_DIR}"]

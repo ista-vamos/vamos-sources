@@ -93,6 +93,28 @@ uint64_t event_kinds[EVENTS_NUM];
 
 shm_list_embedded data_list = {&data_list, &data_list};
 
+#ifdef LIST_LOCK_MTX
+static mtx_t list_mtx;
+static inline void list_lock() {
+    mtx_lock(&list_mtx);
+}
+
+static inline void list_unlock() {
+    mtx_unlock(&list_mtx);
+}
+#else
+static CACHELINE_ALIGNED _Atomic bool list_locked = false;
+static inline void list_lock() {
+    while (atomic_exchange_explicit(&list_locked, true, memory_order_acquire)) {
+        _mm_pause();
+    }
+}
+
+static inline void list_unlock() {
+    atomic_store_explicit(&list_locked, false, memory_order_release);
+}
+#endif
+
 static void (*old_sigabrt_handler)(int);
 static void (*old_sigiot_handler)(int);
 static void (*old_sigsegv_handler)(int);
@@ -110,11 +132,13 @@ static void sig_handler(int sig) {
         fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
 
         struct __vrd_thread_data *data, *tmp;
+        list_lock();
         shm_list_embedded_foreach_safe(data, tmp, &data_list, list) {
            if (!data->exited) {
                buffer_set_destroyed(data->shmbuf);
            }
         }
+        list_unlock();
 
         buffer_set_destroyed(top_shmbuf);
         top_shmbuf = NULL;
@@ -173,6 +197,9 @@ void __tsan_init() {
 
 static void __vrd_init(void) __attribute__((constructor));
 void __vrd_init() {
+#ifdef LIST_LOCK_MTX
+    mtx_init(&list_mtx, mtx_plain);
+#endif
     /* Initialize the info about this source */
     top_control = source_control_define(
         EVENTS_NUM,
@@ -185,8 +212,8 @@ void __vrd_init() {
 	    abort();
     }
 
-    top_shmbuf = create_shared_buffer(shmkey, 512, top_control);
-    if (!top_control) {
+    top_shmbuf = create_shared_buffer(shmkey, 598, top_control);
+    if (!top_shmbuf) {
 	    fprintf(stderr, "Failed creating top SHM buffer\n");
 	    abort();
     }
@@ -207,14 +234,14 @@ void __vrd_init() {
     for (unsigned i = 0; i < EVENTS_NUM; ++i) {
         event_kinds[i] = events[i].kind;
     }
-    fprintf(stderr, "done\n");
 }
 
 static void __vrd_fini(void) __attribute__((destructor));
 void __vrd_fini(void) {
     struct __vrd_thread_data *data, *tmp;
+    list_lock();
     shm_list_embedded_foreach_safe(data, tmp, &data_list, list) {
-        fprintf(stderr, "Thread %lu leaked\n", data->thread_id);
+        fprintf(stderr, "[vamos] warning: thread %lu leaked\n", data->thread_id);
         if (!data->exited) {
             /* XXX: in this case we could get a race... */
             fprintf(stderr, "Thread %lu still running\n", data->thread_id);
@@ -222,6 +249,7 @@ void __vrd_fini(void) {
         }
         free(data);
     }
+    list_unlock();
 
     if (top_shmbuf) {
         /* This is not atomic, but it works in most cases which is enough for us. */
@@ -269,6 +297,7 @@ void *__vrd_create_thrd(void *original_data) {
     struct __vrd_thread_data *data = malloc(sizeof *data);
     assert(data && "Allocation failed");
 
+    assert(tid > 0 && "invalid ID");
     data->data = original_data;
     data->thread_id = tid;
     data->exited = false;
@@ -279,7 +308,9 @@ void *__vrd_create_thrd(void *original_data) {
         abort();
     }
 
+    list_lock();
     shm_list_embedded_insert_after(&data_list, &data->list);
+    list_unlock();
 
     return data;
 }
@@ -296,9 +327,14 @@ void __vrd_thrd_created(void *data, uint64_t std_tid) {
 #endif
     buffer_finish_push(shm);
 
+    /* notify the thread that it can proceed
+       (we cannot allow the thread to emit any events before the fork event is sent
+        and the fork event must be sent from here because we need the thread ID)
+    */
     atomic_store_explicit(&tdata->wait_for_parent, 1, memory_order_release);
 
     tdata->std_thread_id = std_tid;
+    assert(tdata->thread_id > 0 && "invalid ID");
 
 #ifdef DEBUG_STDOUT
     fprintf(stderr, PRINT_PREFIX " created thread %lu\n", rt_timestamp(), thread_data.thread_id, ts, tdata->thread_id);
@@ -323,7 +359,7 @@ void *__vrd_thrd_entry(void *data) {
     while (!atomic_load_explicit(&tdata->wait_for_parent, memory_order_acquire)) {
 	/* wait until the parent thread sends the EV_FORK event
 	 * which must occur before any event in this thread */
-	_mm_pause();
+        _mm_pause();
     }
 
     thread_data.thread_id = tdata->thread_id;
@@ -367,7 +403,7 @@ void __vrd_thrd_exit(void) {
 /*#endif                                                                                      */
 }
 
-struct __vrd_thread_data *get_data(uint64_t std_tid) {
+static inline struct __vrd_thread_data *_get_data(uint64_t std_tid) {
     struct __vrd_thread_data *data;
     shm_list_embedded_foreach(data, &data_list, list) {
         if (data->std_thread_id == std_tid) {
@@ -375,6 +411,14 @@ struct __vrd_thread_data *get_data(uint64_t std_tid) {
         }
     }
     return NULL;
+}
+
+
+struct __vrd_thread_data *get_data(uint64_t std_tid) {
+    list_lock();
+    struct __vrd_thread_data *data = _get_data(std_tid);
+    list_unlock();
+    return data;
 }
 
 void *__vrd_thrd_join(uint64_t tid) {
