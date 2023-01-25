@@ -33,8 +33,10 @@ static struct buffer *top_shmbuf;
 static struct source_control *top_control;
 
 struct __vrd_thread_data {
-  /* The original data passed to thrd_create */
-  void *data;
+  /* The original data and function passed to thrd_create */
+  void *orig_data;
+  void *orig_fun;
+
   /* Our internal unique thread ID */
   uint64_t thread_id;
   /* ID assigned by the thrd_create/ptrhead_create function
@@ -341,13 +343,14 @@ void __tsan_func_exit(void) {}
  * Instrumentation replaces the thread data with this memory
  * so that we get this memory on entering the thread
  */
-void *__vrd_create_thrd(void *original_data) {
+void *__vrd_create_thrd(void *original_fun, void *original_data) {
   uint64_t tid = atomic_fetch_add(&last_thread_id, 1);
   struct __vrd_thread_data *data = malloc(sizeof *data);
   assert(data && "Allocation failed");
 
   assert(tid > 0 && "invalid ID");
-  data->data = original_data;
+  data->orig_data = original_data;
+  data->orig_fun = original_fun;
   data->thread_id = tid;
   data->exited = false;
   data->wait_for_parent = 0;
@@ -392,42 +395,63 @@ void __vrd_thrd_created(void *data, uint64_t std_tid) {
 #endif
 }
 
-/* Called at the beginning of the thread routine (or main) */
-void *__vrd_thrd_entry(void *data) {
-  struct __vrd_thread_data *tdata = (struct __vrd_thread_data *)data;
+static void setup_thread(struct __vrd_thread_data *tdata) {
+  assert(data != NULL);
 
   thread_data.waited_for_buffer = 0;
   thread_data.last_id = 0;
   thread_data.data = tdata;
-
-  /* assign the SHM buffer to this thread */
-  if (data == NULL) {
-    thread_data.thread_id = 0;
-    thread_data.shmbuf = top_shmbuf;
-    return NULL;
-  }
+  thread_data.thread_id = tdata->thread_id;
+  thread_data.shmbuf = tdata->shmbuf;
 
   while (!atomic_load_explicit(&tdata->wait_for_parent, memory_order_acquire)) {
     /* wait until the parent thread sends the EV_FORK event
      * which must occur before any event in this thread */
     _mm_pause();
   }
-
-  thread_data.thread_id = tdata->thread_id;
-  assert(tdata->shmbuf && "Do not have SHM buffer");
-  thread_data.shmbuf = tdata->shmbuf;
-
-  /*#ifdef DEBUG_STDOUT */
-  /*    fprintf(stderr, PRINT_PREFIX " started\n", rt_timestamp(),
-   * thread_data.thread_id, 0UL);*/
-  /*#endif */
-  return tdata->data;
 }
 
-void __vrd_thrd_exit(void) {
-  struct _thread_data *thr_data = &thread_data;
+static void tear_down_thread(struct __vrd_thread_data *tdata) {
+    lock();
+    if (tdata->shmbuf) {
+      destroy_shared_sub_buffer(tdata->shmbuf);
+      tdata->shmbuf = NULL;
+    }
+    unlock();
+}
 
-  if (!thr_data->data) { /* the main thread */
+/* Called at the beginning of the thread routine (or main) */
+void *__vrd_run_thread(void *data) {
+    struct __vrd_thread_data *tdata = (struct __vrd_thread_data *)data;
+
+    setup_thread(tdata);
+    /* run the thread */
+    void *(*fun)(void*) = tdata->orig_fun;
+    void *ret = fun(tdata->orig_data);
+    tear_down_thread(tdata);
+    return ret;
+}
+
+int __vrd_run_thread_c11(void *data) {
+    struct __vrd_thread_data *tdata = (struct __vrd_thread_data *)data;
+
+    setup_thread(tdata);
+    /* run the thread */
+    int(*fun)(void*) = tdata->orig_fun;
+    int ret = fun(tdata->orig_data);
+    tear_down_thread(tdata);
+    return ret;
+}
+
+void __vrd_setup_main_thread(void) {
+  thread_data.waited_for_buffer = 0;
+  thread_data.last_id = 0;
+  thread_data.data = NULL;
+  thread_data.thread_id = 0;
+  thread_data.shmbuf = top_shmbuf;
+}
+
+void __vrd_exit_main_thread(void) {
     fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
     lock();
     if (top_shmbuf) {
@@ -441,21 +465,6 @@ void __vrd_thrd_exit(void) {
     }
 #endif
     unlock();
-  } else {
-    struct buffer *shm;
-    lock();
-    shm = thr_data->data->shmbuf;
-    if (shm) {
-      destroy_shared_sub_buffer(shm);
-      thr_data->data->shmbuf = NULL;
-    }
-    unlock();
-  }
-
-  /*#ifdef DEBUG_STDOUT */
-  /*    fprintf(stderr, PRINT_PREFIX " exitting\n", rt_timestamp(),
-   * thread_data.thread_id, 0UL);*/
-  /*#endif */
 }
 
 static inline struct __vrd_thread_data *_get_data(uint64_t std_tid) {

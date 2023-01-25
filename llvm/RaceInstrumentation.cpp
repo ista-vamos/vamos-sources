@@ -31,12 +31,15 @@ struct RaceInstrumentation : public FunctionPass {
             return false;
         }
 
-        instrumentFuncEntry(&F);
+        bool changed = false;
+
+        if (F.getName().equals("main")) {
+            changed |= instrumentMainFunc(&F);
+        }
 
        //errs() << "Instrumenting: ";
        //errs().write_escaped(F.getName()) << '\n';
 
-        bool changed = false;
         for (auto &BB : F) {
             changed |= runOnBasicBlock(BB);
         }
@@ -50,7 +53,7 @@ struct RaceInstrumentation : public FunctionPass {
 
     void instrumentThreadCreate(CallInst *call, int data_idx);
 
-    void instrumentFuncEntry(Function *fun);
+    bool instrumentMainFunc(Function *fun);
 
     void instrumentThreadFunExit(Function *fun);
 };
@@ -83,10 +86,6 @@ static inline Value *getMutexUnlock(Function *fun, CallInst *call) {
     return nullptr;
 }
 
-static inline bool isTSanFuncEntry(Function *fun) {
-    return fun->getName().equals("__tsan_func_entry");
-}
-
 static inline Value *getThreadJoinTid(Function *fun, CallInst *call) {
     if (fun->getName().equals("thrd_join") ||
         fun->getName().equals("pthread_join")) {
@@ -96,19 +95,39 @@ static inline Value *getThreadJoinTid(Function *fun, CallInst *call) {
 }
 
 void RaceInstrumentation::instrumentThreadCreate(CallInst *call, int data_idx) {
-    assert(data_idx >= 0);
+    assert(data_idx > 0);
     Module *module = call->getModule();
     LLVMContext &ctx = module->getContext();
 
     Value *data = call->getOperand(data_idx);
-
-    // create our data structure and pass it as data to the thread
+    Value *thr_fun = call->getOperand(data_idx - 1);
+    // insert a function that creates the buffer (must be done from this thread
+    // if we want to avoid locking) and creates our data structure that we pass
+    // to pthread_create as data
     const FunctionCallee &vrd_fun = module->getOrInsertFunction(
-        "__vrd_create_thrd", Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx));
-    std::vector<Value *> args = {data};
+        "__vrd_create_thrd", Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx));
+    std::vector<Value *> args = {thr_fun, data};
     auto *tid_call = CallInst::Create(vrd_fun, args, "", call);
     tid_call->setDebugLoc(call->getDebugLoc());
 
+    // now replace the thread function with our wrapper
+    const char *instr_fun_name = data_idx == 2 ? "__vrd_run_thread_c11" : "__vrd_run_thread";
+    if (data_idx == 2) {
+        module->getOrInsertFunction(
+            instr_fun_name,
+            Type::getInt32Ty(ctx),
+            thr_fun->getType(),
+            Type::getInt8PtrTy(ctx));
+    } else {
+        module->getOrInsertFunction(
+            instr_fun_name,
+            Type::getInt8PtrTy(ctx),
+            thr_fun->getType(),
+            Type::getInt8PtrTy(ctx));
+    }
+
+    Value *instr_fun = module->getFunction(instr_fun_name);
+    call->setOperand(data_idx - 1, instr_fun);
     call->setOperand(data_idx, tid_call);
 
     // now insert a call that registers that a thread was created and pass there
@@ -245,47 +264,6 @@ static DebugLoc findFirstDbgLoc(const Instruction *I) {
     return DebugLoc();
 }
 
-void RaceInstrumentation::instrumentFuncEntry(Function *fun) {
-    Module *module = fun->getParent();
-    LLVMContext &ctx = module->getContext();
-
-    const FunctionCallee &instr_fun = module->getOrInsertFunction(
-        "__vrd_thrd_entry", Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx));
-
-    auto *insert_pt = &fun->getEntryBlock().front();
-
-    if (fun->getName().equals("main")) {
-        std::vector<Value *> args = {
-            Constant::getNullValue(Type::getInt8PtrTy(ctx))};
-        auto *new_call = CallInst::Create(instr_fun, args, "", insert_pt);
-        new_call->setDebugLoc(findFirstDbgLoc(insert_pt));
-        instrumentThreadFunExit(fun);
-        return;
-    }
-
-    if (!isThreadEntry(*fun)) {
-       //errs() << "Ignoring func_entry in function " << fun->getName()
-       //       << " (not thread entry)\n";
-        return;
-    }
-
-    /* Replace all uses of arg with a dummy value,
-     * then get the original arg and replace the dummy value
-     * with the original arg */
-    Value *arg = fun->getArg(0);
-    auto *dummy_phi = PHINode::Create(Type::getInt8PtrTy(ctx), 0);
-    arg->replaceAllUsesWith(dummy_phi);
-
-    std::vector<Value *> args = {arg};
-    auto *new_call = CallInst::Create(instr_fun, args, "", insert_pt);
-    new_call->setDebugLoc(findFirstDbgLoc(insert_pt));
-
-    dummy_phi->replaceAllUsesWith(new_call);
-    delete dummy_phi;
-
-    instrumentThreadFunExit(fun);
-}
-
 static inline bool blockHasNoSuccessors(BasicBlock &block) {
     return succ_begin(&block) == succ_end(&block);
 }
@@ -306,25 +284,37 @@ static bool instrumentNoreturn(BasicBlock &block,
     return false;
 }
 
-void RaceInstrumentation::instrumentThreadFunExit(Function *fun) {
+bool RaceInstrumentation::instrumentMainFunc(Function *fun) {
     Module *module = fun->getParent();
     LLVMContext &ctx = module->getContext();
-    const FunctionCallee &instr_fun =
-        module->getOrInsertFunction("__vrd_thrd_exit", Type::getVoidTy(ctx));
+
+    auto *insert_pt = &fun->getEntryBlock().front();
+
+    const FunctionCallee &setup_fun = module->getOrInsertFunction(
+        "__vrd_setup_main_thread", Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx));
+    const FunctionCallee &exit_fun =
+        module->getOrInsertFunction("__vrd_exit_main_thread", Type::getVoidTy(ctx));
+
+    std::vector<Value *> args = {
+        Constant::getNullValue(Type::getInt8PtrTy(ctx))};
+    auto *new_call = CallInst::Create(setup_fun, args, "", insert_pt);
+    new_call->setDebugLoc(findFirstDbgLoc(insert_pt));
 
     for (auto &block : *fun) {
         if (blockHasNoSuccessors(block)) {
-            if (instrumentNoreturn(block, instr_fun)) {
+            if (instrumentNoreturn(block, exit_fun)) {
                 continue;
             }
 
             /* Failed finding noreturn call, so insert the call before the
              * terminator */
             auto *new_call =
-                CallInst::Create(instr_fun, {}, "", block.getTerminator());
+                CallInst::Create(exit_fun, {}, "", block.getTerminator());
             new_call->setDebugLoc(block.getTerminator()->getDebugLoc());
         }
     }
+
+    return true;
 }
 
 bool RaceInstrumentation::runOnBasicBlock(BasicBlock &block) {
