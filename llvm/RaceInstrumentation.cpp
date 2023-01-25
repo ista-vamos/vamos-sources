@@ -31,6 +31,8 @@ struct RaceInstrumentation : public FunctionPass {
             return false;
         }
 
+        instrumentFuncEntry(&F);
+
        //errs() << "Instrumenting: ";
        //errs().write_escaped(F.getName()) << '\n';
 
@@ -48,7 +50,7 @@ struct RaceInstrumentation : public FunctionPass {
 
     void instrumentThreadCreate(CallInst *call, int data_idx);
 
-    void instrumentTSanFuncEntry(CallInst *call);
+    void instrumentFuncEntry(Function *fun);
 
     void instrumentThreadFunExit(Function *fun);
 };
@@ -243,19 +245,20 @@ static DebugLoc findFirstDbgLoc(const Instruction *I) {
     return DebugLoc();
 }
 
-void RaceInstrumentation::instrumentTSanFuncEntry(CallInst *call) {
-    Module *module = call->getModule();
-    Function *fun = call->getFunction();
+void RaceInstrumentation::instrumentFuncEntry(Function *fun) {
+    Module *module = fun->getParent();
     LLVMContext &ctx = module->getContext();
 
     const FunctionCallee &instr_fun = module->getOrInsertFunction(
         "__vrd_thrd_entry", Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx));
 
+    auto *insert_pt = &fun->getEntryBlock().front();
+
     if (fun->getName().equals("main")) {
         std::vector<Value *> args = {
             Constant::getNullValue(Type::getInt8PtrTy(ctx))};
-        auto *new_call = CallInst::Create(instr_fun, args, "", call);
-        new_call->setDebugLoc(call->getDebugLoc());
+        auto *new_call = CallInst::Create(instr_fun, args, "", insert_pt);
+        new_call->setDebugLoc(findFirstDbgLoc(insert_pt));
         instrumentThreadFunExit(fun);
         return;
     }
@@ -274,8 +277,8 @@ void RaceInstrumentation::instrumentTSanFuncEntry(CallInst *call) {
     arg->replaceAllUsesWith(dummy_phi);
 
     std::vector<Value *> args = {arg};
-    auto *new_call = CallInst::Create(instr_fun, args, "", call);
-    new_call->setDebugLoc(call->getDebugLoc());
+    auto *new_call = CallInst::Create(instr_fun, args, "", insert_pt);
+    new_call->setDebugLoc(findFirstDbgLoc(insert_pt));
 
     dummy_phi->replaceAllUsesWith(new_call);
     delete dummy_phi;
@@ -357,8 +360,6 @@ bool RaceInstrumentation::runOnBasicBlock(BasicBlock &block) {
                 instrumentThreadCreate(call, data_idx);
             } else if (auto *data = getThreadJoinTid(calledfun, call)) {
                 instrumentThreadJoin(call, data);
-            } else if (isTSanFuncEntry(calledfun)) {
-                instrumentTSanFuncEntry(call);
             }
         }
     }
