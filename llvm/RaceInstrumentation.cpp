@@ -189,6 +189,19 @@ static inline bool isThreadCreateCall(CallInst *call) {
     return false;
 }
 
+bool isSelectOfThreadFun(SelectInst *select) {
+    for (auto &use : select->uses()) {
+        auto *user = use.getUser();
+        if (auto *call = dyn_cast<CallInst>(user)) {
+            // XXX: we should also check that it is the right operand
+            if (isThreadCreateCall(call)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool RaceInstrumentation::isThreadEntry(const Function &fun) const {
     if (fun.arg_size() != 1)
         return false;
@@ -200,7 +213,13 @@ bool RaceInstrumentation::isThreadEntry(const Function &fun) const {
     for (auto &use : fun.uses()) {
         auto *user = use.getUser();
         if (auto *call = dyn_cast<CallInst>(user)) {
-            return isThreadCreateCall(call);
+            if (isThreadCreateCall(call))
+                return true;
+        }
+        if (auto *select = dyn_cast<SelectInst>(user)) {
+            if (isSelectOfThreadFun(select)) {
+                return true;
+            }
         }
         errs() << "WARNING: Unsupported user of a function: " << *user << "\n";
     }
