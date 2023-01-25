@@ -119,13 +119,13 @@ void RaceInstrumentation::instrumentThreadCreate(CallInst *call, int data_idx) {
         module->getOrInsertFunction(
             instr_fun_name,
             Type::getInt32Ty(ctx),
-            thr_fun->getType(),
+            call->getOperand(data_idx - 1)->getType(),
             Type::getInt8PtrTy(ctx));
     } else {
         module->getOrInsertFunction(
             instr_fun_name,
             Type::getInt8PtrTy(ctx),
-            thr_fun->getType(),
+            call->getOperand(data_idx - 1)->getType(),
             Type::getInt8PtrTy(ctx));
     }
 
