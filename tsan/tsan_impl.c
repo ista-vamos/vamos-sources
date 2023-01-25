@@ -443,6 +443,10 @@ int __vrd_run_thread_c11(void *data) {
     return ret;
 }
 
+void __vrd_thrd_exit(void) {
+    tear_down_thread(thread_data.data);
+}
+
 void __vrd_setup_main_thread(void) {
   thread_data.waited_for_buffer = 0;
   thread_data.last_id = 0;

@@ -47,8 +47,6 @@ struct RaceInstrumentation : public FunctionPass {
         return changed;
     }
 
-    bool isThreadEntry(const Function &) const;
-
     bool runOnBasicBlock(BasicBlock &block);
 
     void instrumentThreadCreate(CallInst *call, int data_idx);
@@ -92,6 +90,10 @@ static inline Value *getThreadJoinTid(Function *fun, CallInst *call) {
         return call->getOperand(0);
     }
     return nullptr;
+}
+
+static inline bool isThreadExit(Function *fun) {
+    return fun->getName().equals("thrd_exit") || fun->getName().equals("pthread_exit");
 }
 
 void RaceInstrumentation::instrumentThreadCreate(CallInst *call, int data_idx) {
@@ -172,6 +174,18 @@ static void instrumentThreadJoin(CallInst *call, Value *tid) {
     new_call->insertAfter(call);
 }
 
+static void instrumentThreadExit(CallInst *call) {
+    Module *module = call->getModule();
+    LLVMContext &ctx = module->getContext();
+
+    const FunctionCallee &fun = module->getOrInsertFunction(
+        "__vrd_thrd_exit", Type::getVoidTy(ctx));
+    std::vector<Value *> args = {};
+    auto *new_call = CallInst::Create(fun, args, "", call);
+    new_call->setDebugLoc(call->getDebugLoc());
+}
+
+
 static void insertMutexLockOrUnlock(CallInst *call, Value *mtx,
                                     const std::string &fun,
                                     bool isunlock = false) {
@@ -220,30 +234,6 @@ bool isSelectOfThreadFun(SelectInst *select) {
                 return true;
             }
         }
-    }
-    return false;
-}
-
-bool RaceInstrumentation::isThreadEntry(const Function &fun) const {
-    if (fun.arg_size() != 1)
-        return false;
-
-    if (!fun.getReturnType()->isIntOrPtrTy())
-        return false;
-
-    // is this fun called from thrd/pthread_create ?
-    for (auto &use : fun.uses()) {
-        auto *user = use.getUser();
-        if (auto *call = dyn_cast<CallInst>(user)) {
-            if (isThreadCreateCall(call))
-                return true;
-        }
-        if (auto *select = dyn_cast<SelectInst>(user)) {
-            if (isSelectOfThreadFun(select)) {
-                return true;
-            }
-        }
-        errs() << "WARNING: Unsupported user of a function: " << *user << "\n";
     }
     return false;
 }
@@ -351,6 +341,8 @@ bool RaceInstrumentation::runOnBasicBlock(BasicBlock &block) {
                 instrumentThreadCreate(call, data_idx);
             } else if (auto *data = getThreadJoinTid(calledfun, call)) {
                 instrumentThreadJoin(call, data);
+            } else if (isThreadExit(calledfun)) {
+                instrumentThreadExit(call);
             }
         }
     }
