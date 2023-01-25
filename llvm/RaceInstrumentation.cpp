@@ -106,7 +106,8 @@ void RaceInstrumentation::instrumentThreadCreate(CallInst *call, int data_idx) {
     // to pthread_create as data
     const FunctionCallee &vrd_fun = module->getOrInsertFunction(
         "__vrd_create_thrd", Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx), Type::getInt8PtrTy(ctx));
-    std::vector<Value *> args = {thr_fun, data};
+    auto *cst = CastInst::CreatePointerCast(thr_fun, Type::getInt8PtrTy(ctx), "", call);
+    std::vector<Value *> args = {cst, data};
     auto *tid_call = CallInst::Create(vrd_fun, args, "", call);
     tid_call->setDebugLoc(call->getDebugLoc());
 
