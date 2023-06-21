@@ -15,7 +15,7 @@
 #include "vamos-buffers/shmbuf/buffer.h"
 #include "vamos-buffers/shmbuf/client.h"
 #include "vamos-buffers/core/list-embedded.h"
-#include "vamos-buffers/core/shm_string-macro.h"
+#include "vamos-buffers/core/vms_string-macro.h"
 #include "vamos-buffers/core/signatures.h"
 #include "vamos-buffers/core/source.h"
 #include "vamos-buffers/core/spsc_ringbuf.h"
@@ -64,7 +64,7 @@ static size_t tmpline_len;
 struct line {
     STRING(data);
     size_t timestamp;
-    shm_list_embedded list;
+    vms_list_embedded list;
 } __attribute__((aligned(CACHELINE_SIZE)));
 
 struct line lines[3];
@@ -147,7 +147,7 @@ static regex_t *re[3];
 static char **signatures[3];
 struct event_record *events[3];
 static size_t waiting_for_buffer[3];
-static shm_event evs[3];
+static vms_event evs[3];
 
 static struct buffer *shmbuf[3];
 
@@ -175,7 +175,7 @@ static int parse_line(int fd, struct line *line_info) {
 
     // info("[%d] parsing line (%p): '%s'\n", fd, line, line);
 
-    shm_event *ev = &evs[fd];
+    vms_event *ev = &evs[fd];
     for (int i = 0; i < num; ++i) {
         if ((ev->kind = events[fd][i].kind) == 0) {
             continue; /* monitor is not interested in this */
@@ -297,7 +297,7 @@ static void dump_lines(int fd) {
     int n = 0;
     struct line *line;
     info("Lines [%d]:\n", fd);
-    shm_list_embedded_foreach(line, &lines[fd].list, list) {
+    vms_list_embedded_foreach(line, &lines[fd].list, list) {
         printf("  fd %d, line %d: ", fd, ++n);
         dump_line(line);
     }
@@ -321,7 +321,7 @@ static inline void put_to_pool(int fd, struct line *line) {
 
 static inline struct line *get_line(int fd) {
     struct line *line;
-    shm_list_embedded_foreach(line, &lines[fd].list, list) { return line; }
+    vms_list_embedded_foreach(line, &lines[fd].list, list) { return line; }
     return NULL;
 }
 
@@ -372,8 +372,8 @@ static void parser_thread(void *data) {
                     break;
                 }
 
-                assert(!shm_list_embedded_empty(&lines[i].list));
-                shm_list_embedded_remove(&line->list);
+                assert(!vms_list_embedded_empty(&lines[i].list));
+                vms_list_embedded_remove(&line->list);
                 list_unlock(i);
 
                 assert(line);
@@ -414,7 +414,7 @@ struct line *create_new_line() {
     struct line *line = xmalloc(sizeof *line);
     STRING_INIT(line->data);
     STRING_GROW(line->data, 128);
-    shm_list_embedded_init(&line->list);
+    vms_list_embedded_init(&line->list);
 
     return line;
 }
@@ -455,7 +455,7 @@ static inline void finish_line(int fd) {
     current_line[fd]->timestamp = ++timestamp;
     list_lock(fd);
     /* insert at the end */
-    shm_list_embedded_insert_after(lines[fd].list.prev,
+    vms_list_embedded_insert_after(lines[fd].list.prev,
                                    &current_line[fd]->list);
     list_unlock(fd);
 }
@@ -650,7 +650,7 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
 
         STRING_INIT(lines[i].data);
         STRING_GROW(lines[i].data, 128);
-        shm_list_embedded_init(&lines[i].list);
+        vms_list_embedded_init(&lines[i].list);
         init_new_line(i);
     }
 
@@ -755,7 +755,7 @@ static void event_exit(void) {
         if (shmbuf[i] == 0)
             continue;
 
-        if (!shm_list_embedded_empty(&lines[i].list)) {
+        if (!vms_list_embedded_empty(&lines[i].list)) {
             if (buffer_monitor_attached(shmbuf[i])) {
                 dump_lines(i);
                 assert(0 && "Have unprocessed lines");

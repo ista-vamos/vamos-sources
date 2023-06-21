@@ -25,7 +25,7 @@ static void usage_and_exit(int ret) {
 #endif
 
 struct event {
-    shm_event base;
+    vms_event base;
     unsigned char args[];
 };
 

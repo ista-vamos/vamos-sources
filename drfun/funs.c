@@ -132,7 +132,7 @@ static void find_functions(void *drcontext, const module_data_t *mod,
             addresses[i] = (size_t)mod->start + off;
             events[i].size =
                 signature_get_size((unsigned char *)events[i].signature) +
-                sizeof(shm_event_funcall);
+                sizeof(vms_event_funcall);
             dr_printf("Found %s:%s in %s at 0x%x (size %lu)\n", events[i].name,
                       events[i].signature, mod->full_path, addresses[i],
                       events[i].size);
@@ -315,7 +315,7 @@ static void at_call_generic(size_t fun_idx, const char *sig) {
         ++data->waiting_for_buffer;
     }
     DR_ASSERT(fun_idx < events_num);
-    shm_event_funcall *ev = (shm_event_funcall *)shmaddr;
+    vms_event_funcall *ev = (vms_event_funcall *)shmaddr;
     ev->base.kind = events[fun_idx].kind;
     ev->base.id = ++last_event_id;
     memcpy(ev->signature, events[fun_idx].signature, sizeof(ev->signature));

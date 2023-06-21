@@ -101,7 +101,7 @@ static void usage_and_exit(int ret) {
 static char **signatures;
 static regex_t *re;
 static size_t exprs_num;
-shm_event_drregex ev;
+vms_event_drregex ev;
 
 static char *tmpline = NULL;
 static size_t tmpline_len = 0;
