@@ -1,0 +1,6 @@
+// FIXME
+boolexpr: "true" | "false" | NAME
+          | "!" boolexpr     -> not
+          | "(" boolexpr ")"
+
+%import common.CNAME -> NAME

@@ -1,0 +1,46 @@
+start: [eventsspec] [imports] statements
+// for inlined specifications
+inlined: imports statements
+
+eventsspec: "events" ESCAPED_STRING ";"? WSEOL
+imports: import+
+import: "import" name ";"? WSEOL
+WSEOL: /\s*\n/
+
+statements: statement+
+
+statement: let | foreach | ifexpr ";"? | newexpr ";" | runcommand | methodcall ";" | yield ";"
+
+let: "let" name "=" expr ";"
+ifexpr: "if" (boolexpr | methodcall | value) "{" statements "}" ["else" "{" statements "}"]
+foreach: "foreach" name "in" iterable "{" statements "}"
+runcommand: "run" /[^\n]/*
+yield: "yield" event+ tracename
+tracename: NAME
+event: name ["(" params ")"]
+
+expr: newexpr | boolexpr | methodcall | specarg | constant
+specarg: "$" NUMBER
+iterable: NAME | methodcall
+
+newexpr: "new" type
+methodcall: name "." name "(" [params] ")"
+params: (name | expr) ("," (name | expr))*
+constant: NUMBER | ESCAPED_STRING
+value: NAME
+
+//%import types.typeannot
+%import types.type
+%import expr.boolexpr
+%import comm.name
+%import comm.namelist
+
+%import common.CNAME -> NAME
+%import common.NUMBER
+%import common.ESCAPED_STRING
+%import common.WS_INLINE
+%import common.WS
+COMMENT: "--" /[^\n]/*
+
+%ignore COMMENT
+%ignore WS

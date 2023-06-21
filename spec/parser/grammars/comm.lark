@@ -1,0 +1,5 @@
+
+name: NAME
+namelist: NAME ("," NAME)*
+
+%import common.CNAME -> NAME

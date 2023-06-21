@@ -1,0 +1,14 @@
+
+let t = new [Input, Output, Write];
+let f = file.reader($1);
+
+-- foreach! is strict (non-lazy) foreach. It means iterate until
+-- the iterable is not done and do not yield control to later
+-- constructs (which is the default to support incremental and parallel
+
+foreach line in f.lines() {
+    let r = regex.match("#(\d+):(\d+)");
+    if r.matched() {
+      yield Output(r.get(1), r.get(2)) to t;
+    }
+}

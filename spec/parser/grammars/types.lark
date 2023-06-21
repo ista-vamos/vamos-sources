@@ -1,0 +1,16 @@
+
+typeannot: ":" type
+
+type:  simpletype
+      | tracetype
+      | usertype
+tracetype: "[" _traceelemtype ["," _traceelemtype]* "]" | usertype
+_traceelemtype: simpletype | usertype
+
+!simpletype:  "Int8" | "Int16" | "Int32" | "Int64"
+            | "UInt8" | "UInt16" | "UInt32" | "UInt64"
+            | "Float32" | "Float64"
+            | "Char" | "Bool"
+!usertype: NAME
+
+%import common.CNAME -> NAME
