@@ -1,4 +1,4 @@
-from parser.element import Element
+from ir.element import Element
 from parser.types.type import SimpleType, BoolType
 
 

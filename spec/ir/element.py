@@ -1,6 +1,10 @@
 class Element:
     def __init__(self, ty=None):
-        self.type = ty
+        self._type = ty
+
+    def type(self):
+        return self._type
+
 
     @property
     def children(self):
@@ -18,7 +22,7 @@ class Identifier(Element):
         return self.name
 
     def __str__(self):
-        return f"ID({self.name})" + (f": {self.type}" if self.type else "")
+        return f"ID({self.name})" + (f": {self.type()}" if self.type() else "")
 
     def __eq__(self, other):
         assert isinstance(other, Identifier), (other, type(other))
@@ -41,3 +45,4 @@ class ElementList(list):
 
     def __repr__(self):
         return f"List{super().__repr__()}"
+

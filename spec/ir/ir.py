@@ -1,24 +1,59 @@
-from spec.ir.type import BoolType
+from ir.element import Element
+from ir.type import EventType
 
 
-class Element:
-    def __init__(self, ty):
-        self._type = ty
-
-    def type(self):
-        return self._type
 class Program(Element):
-    def __init__(self):
+    def __init__(self, events, imports, stmts):
         super().__init__(None)
-        self.stmts = []
+        self.events = events
+        self.imports = imports
+        self.statements = stmts
+
+    def __repr__(self):
+        return "Program(...)"
+
+    @property
+    def children(self):
+        return self.statements
 
 class Statement(Element):
     def __init__(self):
         super().__init__(None)
+
+class StatementList(Element):
+    def __init__(self, stmts):
+        super().__init__(None)
+        self.statements = stmts
+
+    def __getitem__(self, item):
+        return self.statements[item]
+
+    @property
+    def children(self):
+        return self.statements
+
+    def __repr__(self):
+        s = str(self.statements)
+        if len(s) > 40:
+            return f"StatementList({s[:40]} ...)"
+        return f"StatementList({s})"
+
+class Import(Statement):
+    def __init__(self, name):
+        super().__init__()
+        self.module = name
+
+    def __repr__(self):
+        return f"Import({self.module})"
+
 class RunCommand(Statement):
     def __init__(self, cmd):
         super().__init__()
         self.cmd = cmd
+
+    @property
+    def children(self):
+        return ()
 
 class Yield(Statement):
     def __init__(self, events, trace):
@@ -26,35 +61,49 @@ class Yield(Statement):
         self.events = events
         self.trace = trace
 
-class New(Statement):
-    def __init__(self, ty):
+    def __repr__(self):
+        return f"Yield({self.events}, {self.trace})"
+
+    @property
+    def children(self):
+        return self.events + [self.trace]
+
+
+class Let(Statement):
+    """
+    Bind a name: let `name` = `obj`
+    """
+    def __init__(self, name, obj):
         super().__init__()
-        self.type = ty
+
+        self.name = name
+        self.obj = obj
+
+    def __repr__(self):
+        return f"Let({self.name}, {self.obj})"
+
+    @property
+    def children(self):
+        return ()
+
 
 class ForEach(Statement):
     """
     foreach `val` in `iterable` { }
     """
     def __init__(self, val, iterable, stmts):
-        super.__init__()
+        super().__init__()
         self.value = val
         self.iterable = iterable
         self.stmts = stmts
 
-class Expr(Element):
-    def __init__(self, ty):
-        super().__init__(ty)
+    def __repr__(self):
+        return f"ForEach({self.value} in {self.iterable} do {self.stmts})"
 
+    @property
+    def children(self):
+        return self.stmts
 
-class IfExpr(Expr):
-    "if `cond` { `true_stmts` } [else { `false_stmts` }]"
-    def __init__(self, cond, true_stmts, false_stmts=None):
-        super.__init__(BoolType())
-        assert isinstance(cond, Expr), cond
-        assert cond.type().is_bool(), cond
-        self.cond = cond
-        self.true_stmts = true_stmts
-        self.false_stmts = false_stmts
 
 class Object(Element):
     """
@@ -64,3 +113,16 @@ class Object(Element):
 
 class Process(Object):
     pass
+
+class Event(Object):
+    def __init__(self, name, params):
+        super().__init__(EventType(name))
+        self.name = name
+        self.params = params
+
+    def __repr__(self):
+        return f"Event({self.name}, {self.params})"
+
+    @property
+    def children(self):
+        return self.params or ()

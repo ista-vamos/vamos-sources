@@ -1,4 +1,4 @@
-from .element import Element
+from ir.element import Element
 
 
 class TransitionOutput(Element):

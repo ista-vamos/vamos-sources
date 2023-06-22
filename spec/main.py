@@ -13,8 +13,7 @@ def main(args):
     print(args)
     for inp in args.inputs:
         ast = parser.parse_path(inp)
-        print(ast)
-        print(ast.pretty())
+        #print(ast.pretty())
 
 
 def parse_arguments():

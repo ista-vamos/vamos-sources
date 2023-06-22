@@ -1,7 +1,4 @@
 class Type:
-    def __repr__(self):
-        return f"TYPE({str(self)})"
-
     @property
     def children(self):
         raise NotImplementedError(f"Must be overriden for {self}")
@@ -17,6 +14,16 @@ class UserType(Type):
     @property
     def children(self):
         return ()
+
+class EventType(UserType):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def __str__(self):
+        return f"EventTy({self.name})"
+
+    def __repr__(self):
+        return f"EventType({self.name})"
 
 
 class SimpleType(Type):
@@ -64,11 +71,6 @@ class UIntType(NumType):
 class IterableType(Type):
     pass
 
-class TupleType(IterableType):
-    pass
-
-class StringType(IterableType):
-    pass
 
 class TraceType(IterableType):
     def __init__(self, subtypes):
@@ -123,3 +125,12 @@ def type_from_token(token):
             return UIntType(16)
 
     raise NotImplementedError(f"Unknown type: {token}")
+
+
+class TupleType(IterableType):
+    pass
+
+
+class StringType(IterableType):
+    def __repr__(self):
+        return "StringTy"

@@ -1,14 +1,22 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
-from ir.type import NumType, type_from_token, UserType, TraceType, HypertraceType
-from parser.element import Identifier
-from ir.expr import Constant, BoolExpr
+from ir.ir import Event, Yield, Statement, Let, ForEach, StatementList, Import, Program
+from ir.type import NumType, type_from_token, UserType, TraceType, HypertraceType, Type, StringType
+from ir.element import Identifier, Element
+from ir.expr import Constant, BoolExpr, New, CommandLineArgument, Expr, MethodCall, IfExpr
 
 
 class BaseTransformer(Transformer):
-    def NUMBER(self, items):
-        return Constant(int(items.value), NumType())
+   #def NUMBER(self, items):
+   #    return Constant(int(items.value), NumType())
+
+    def constant_string(self, items):
+        return Constant(items[0], StringType())
+
+    def constant_number(self, items):
+        return Constant(items[0], NumType())
+
 
     def NAME(self, items):
         return Identifier(str(items.value))
@@ -82,6 +90,74 @@ class ProcessAST(BaseTransformer):
         assert isinstance(items[0], BoolExpr)
         return items[0]
 
+    def newexpr(self, items):
+        return New(items[0])
+
+    def methodcall(self, items):
+        module = items[0].children[0]
+        method = items[1].children[0]
+        params = items[2]
+        return MethodCall(module, method, params or [])
+
+    def expr(self, items):
+        assert isinstance(items[0], Expr), items
+        return items[0]
+
+    def start(self, items):
+        return Program(items[0], items[1], StatementList(items[2]))
+    def eventseq(self, items):
+        return items
+
+    def statement(self, items):
+        assert isinstance(items[0], (Statement, Expr)), items
+        assert len(items) == 1, items
+        return items[0]
+
+    def statements(self, items):
+        return StatementList(items)
+
+    def imports(self, items):
+        return items
+
+    def importmod(self, items):
+        return Import(items[0].children[0])
+
+    def foreach(self, items):
+        iterable = items[1].children[0]
+        if not isinstance(iterable, (Element)):
+            # then it is AST node
+            if iterable.data == "name":
+                iterable = iterable.children[0]
+            else:
+                raise NotImplementedError(f"Unknown type of iterable: {iterable}")
+        return ForEach(items[0].children[0],
+                       iterable,
+                       items[2])
+    def yieldto(self, items):
+        return Yield(items[0], items[1].children[0])
+
+    def event(self, items):
+        name = items[0].children[0]
+        params = items[1]
+        return Event(name, params)
+
+    def specarg(self, items):
+        return CommandLineArgument(items[0])
+
+    def params(self, items):
+        return items
+
+    def ifexpr(self, items):
+        assert isinstance(items[0], Expr), items[0]
+        assert isinstance(items[1], StatementList), items[1]
+        assert items[2] is None or isinstance(items[2], StatementList), items[1]
+        return IfExpr(items[0], items[1], items[2])
+
+
+    def let(self, items):
+        assert len(items) == 2, items
+        return Let(items[0].children[0], items[1])
+
     def typeannot(self, items):
         return items[0]
 
@@ -101,19 +177,19 @@ class ProcessAST(BaseTransformer):
         return items
 
 
-# def visit_ast(node, lvl, fn, *args):
-#     fn(lvl, node, *args)
-#     if node is None:
-#         return
-#
-#     if not hasattr(node, "children"):
-#         return
-#     for ch in node.children:
-#         visit_ast(ch, lvl + 1, fn, args)
-#
-#
-# def prnode(lvl, node, *args):
-#     print(" " * lvl * 2, node)
+def visit_ast(node, lvl, fn, *args):
+    fn(lvl, node, *args)
+    if node is None:
+        return
+
+    if not hasattr(node, "children"):
+        return
+    for ch in node.children:
+        visit_ast(ch, lvl + 1, fn, args)
+
+
+def prnode(lvl, node, *args):
+    print(" " * lvl * 2, node)
 
 
 def transform_ast(lark_ast):
@@ -125,5 +201,7 @@ def transform_ast(lark_ast):
         #expr=ProcessExpr(),
     )
     ast = T.transform(lark_ast)
+
+    visit_ast(ast, 1, prnode)
 
     return ast

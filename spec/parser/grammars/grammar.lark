@@ -3,30 +3,32 @@ start: [eventsspec] [imports] statements
 inlined: imports statements
 
 eventsspec: "events" ESCAPED_STRING ";"? WSEOL
-imports: import+
-import: "import" name ";"? WSEOL
+imports: importmod+
+importmod: "import" name ";"? WSEOL
 WSEOL: /\s*\n/
 
 statements: statement+
 
-statement: let | foreach | ifexpr ";"? | newexpr ";" | runcommand | methodcall ";" | yield ";"
+statement: let | foreach | ifexpr ";"? | newexpr ";" | runcommand | methodcall ";" | yieldto ";"
 
 let: "let" name "=" expr ";"
 ifexpr: "if" (boolexpr | methodcall | value) "{" statements "}" ["else" "{" statements "}"]
 foreach: "foreach" name "in" iterable "{" statements "}"
 runcommand: "run" /[^\n]/*
-yield: "yield" event+ tracename
+yieldto: "yield" eventseq "to" tracename
+eventseq: event+
 tracename: NAME
 event: name ["(" params ")"]
 
 expr: newexpr | boolexpr | methodcall | specarg | constant
 specarg: "$" NUMBER
-iterable: NAME | methodcall
+iterable: name | methodcall
 
 newexpr: "new" type
 methodcall: name "." name "(" [params] ")"
 params: (name | expr) ("," (name | expr))*
-constant: NUMBER | ESCAPED_STRING
+constant: NUMBER -> constant_number
+         | ESCAPED_STRING -> constant_string
 value: NAME
 
 //%import types.typeannot
