@@ -1,24 +1,53 @@
 import sys
 from os import readlink
 from os.path import islink, dirname, abspath
+from multiprocessing import Process
+import os
+
+from interpreter.interpreter import Interpreter
 from parser.parser import Parser
 import argparse
 
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
 sys.path.insert(0, abspath(f"{self_path}/.."))
 
+def interpret(program, inp, args):
+    print('module name:', __name__)
+    print('Parent process:', os.getppid())
+    print('Interpreter PID:', os.getpid())
+
+    I = Interpreter(program, inp, args)
+    I.run()
 
 def main(args):
     parser = Parser()
-    print(args)
+    #print(args)
+    programs = []
     for inp in args.inputs:
-        ast = parser.parse_path(inp)
+        ast = parser.parse_path(inp.file)
+        programs.append((ast, inp))
         #print(ast.pretty())
 
+    processes = []
+    for p, inp in programs:
+        proc = Process(target=interpret, args=(p, inp, args))
+        processes.append(proc)
+        proc.run()
+
+   #for p in processes:
+   #    p.join()
+
+class Input:
+    def __init__(self, spec, args):
+        self.file = spec
+        self.args = args
+
+    def __repr__(self):
+        return f"Input({self.file}, args={self.args})"
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('files', nargs='+', help='Input files (.vsrc, additional C++ files')
+    parser.add_argument('files', nargs='+', help='Input files (.vsrc, additional C++ files) and their arguments (each .vsrc file can be followed by arguments)')
     parser.add_argument('--out-dir', action='store', default="/tmp/mpt", help='Output directory (default: /tmp/mpt)')
     parser.add_argument('--build-type', action='store', help='Force build type for the CMake project')
     parser.add_argument('--debug', action='store_true', help='Debugging mode')
@@ -26,6 +55,7 @@ def parse_arguments():
     parser.add_argument('--verbose', '-v', action='store_true', help='Print more messages')
     parser.add_argument('--stats', action='store_true', help='Gather statistics')
     parser.add_argument('-D', action='append', default=[], help='Additional CMake definitions')
+    parser.add_argument('--modules-dirs', action='append', default=[], help="Paths to extension modules")
     parser.add_argument('--overwrite-default', action='append', default=[],
                         help="Do not generate the default version of the given file, its replacement is assumed to be "
                              "provided as an additional source.")
@@ -35,12 +65,16 @@ def parse_arguments():
     args.cpp_files = []
     args.sources_def = None
     args.cmake_defs = args.D
+    inp = None
     for fl in args.files:
         if fl.endswith(".cpp") or fl.endswith(".h") or\
              fl.endswith(".hpp") or fl.endswith(".cxx") or fl.endswith("cc"):
             args.cpp_files.append(abspath(fl))
         elif fl.endswith(".vsrc"):
-            args.inputs.append(fl)
+            inp = Input(fl, [])
+            args.inputs.append(inp)
+        elif inp is not None:
+            inp.args.append(fl)
         else:
             raise RuntimeError(f"Unknown file type: {fl}")
 

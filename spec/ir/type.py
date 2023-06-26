@@ -3,6 +3,9 @@ class Type:
     def children(self):
         raise NotImplementedError(f"Must be overriden for {self}")
 
+    def __eq__(self, other):
+        return isinstance(other, type(self))
+
 
 class UserType(Type):
     def __init__(self, name):
@@ -10,6 +13,12 @@ class UserType(Type):
 
     def __str__(self):
         return f"uTYPE({self.name})"
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.name == other.name
+
+    def __hash__(self):
+        return hash(str(self))
 
     @property
     def children(self):
@@ -44,6 +53,9 @@ class NumType(SimpleType):
         assert bitwidth is None or bitwidth in (8, 16, 32, 64), bitwidth
         self.bitwidth = bitwidth
 
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.bitwidth == other.bitwidth
+
     def __str__(self):
         if self.bitwidth is None:
             return "Num"
@@ -74,10 +86,13 @@ class IterableType(Type):
 
 class TraceType(IterableType):
     def __init__(self, subtypes):
-        self.subtypes = subtypes
+        self.subtypes = set(subtypes)
 
     def __str__(self):
         return f"Tr:{','.join(map(str, self.subtypes))}"
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.subtypes == other.subtypes
 
     @property
     def children(self):
@@ -94,6 +109,10 @@ class HypertraceType(IterableType):
 
     def __str__(self):
         return f"Ht:{{{','.join(map(str, self.subtypes))} {'...' if not self.bounded else ''}}}"
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.subtypes == other.subtypes and self.bounded == other.bounded
+
 
     @property
     def children(self):

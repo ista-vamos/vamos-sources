@@ -9,6 +9,9 @@ class Program(Element):
         self.imports = imports
         self.statements = stmts
 
+    def __getitem__(self, item):
+        return self.statements[item]
+
     def __repr__(self):
         return "Program(...)"
 
@@ -96,6 +99,9 @@ class ForEach(Statement):
         self.value = val
         self.iterable = iterable
         self.stmts = stmts
+
+    def __getitem__(self, item):
+        return self.stmts[item]
 
     def __repr__(self):
         return f"ForEach({self.value} in {self.iterable} do {self.stmts})"

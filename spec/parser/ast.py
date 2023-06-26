@@ -12,10 +12,11 @@ class BaseTransformer(Transformer):
    #    return Constant(int(items.value), NumType())
 
     def constant_string(self, items):
-        return Constant(items[0], StringType())
+        # strip quotes from the string
+        return Constant(items[0][1:-1], StringType())
 
     def constant_number(self, items):
-        return Constant(items[0], NumType())
+        return Constant(int(items[0]), NumType())
 
 
     def NAME(self, items):
@@ -96,8 +97,14 @@ class ProcessAST(BaseTransformer):
     def methodcall(self, items):
         module = items[0].children[0]
         method = items[1].children[0]
-        params = items[2]
-        return MethodCall(module, method, params or [])
+        params = []
+        for item in (items[2] or ()):
+            if isinstance(item, (Constant, CommandLineArgument)):
+                params.append(item)
+            else:
+                assert item.data == "name", item
+                params.append(item.children[0])
+        return MethodCall(module, method, params)
 
     def expr(self, items):
         assert isinstance(items[0], Expr), items
