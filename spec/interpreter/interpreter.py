@@ -68,8 +68,8 @@ class Interpreter:
 
         for imp in self.program.imports:
             name = imp.module.name
-            mod = import_module(name, "..modules")
-            dbg(f"Imported: {mod}")
+            mod = import_module(f"modules.{name}")
+            print(f"Imported: {mod}")
             m = Module(mod.METHODS)
             self.modules[name] = m
             self.bind_name(name, m)
@@ -168,9 +168,9 @@ class Interpreter:
 
         for ev in stmt.events:
             event = seval(ev)
-            print(f"{trace.id()}: {event.name.pretty_str()}",
-                  ", " if event.params else "",
-                  ", ".join(map(lambda p: p.pretty_str(), event.params)))
+            print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
+            print(", " if event.params else "", end="")
+            print(", ".join(map(lambda p: p.value, event.params)))
             trace.add_elem(event)
 
     def run(self):

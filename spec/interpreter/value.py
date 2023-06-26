@@ -40,6 +40,9 @@ class Trace(Iterable):
     def id(self):
         return self._id
 
+    def size(self):
+        return len(self.events)
+
     def add_elem(self, elem):
         self.events.append(elem)
 

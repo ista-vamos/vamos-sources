@@ -1,4 +1,4 @@
-from re import match as rematch
+from re import match as re_match, search as re_search
 
 from interpreter.value import Value
 from ir.expr import Constant
@@ -6,7 +6,7 @@ from ir.type import StringType, BoolType
 
 
 class ReMatch(Value):
-    def __init__(self, s, rexp):
+    def __init__(self, s, rexp, search=False):
         super().__init__("<REMatch>", "<rematch>")
         self.string = s
 
@@ -14,7 +14,7 @@ class ReMatch(Value):
         assert rexp.type == StringType(), rexp
         re = str(rexp.value)
         text = str(s.value)
-        self.matched = rematch(re, text)
+        self.matched = re_search(re, text) if search else re_match(re, text)
 
     def re_match_get(self, state, params):
         assert isinstance(params[0].value, int), params
@@ -32,8 +32,12 @@ class ReMatch(Value):
 def match(state, params):
     return ReMatch(params[0], params[1])
 
+def search(state, params):
+    return ReMatch(params[0], params[1], search=True)
+
 
 METHODS = {
-    'match' : match
+    'match' : match,
+    'search': search
 
 }

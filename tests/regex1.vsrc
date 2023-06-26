@@ -1,20 +1,20 @@
 import file
 import regex
+import string
 
 let t = new [Input, Output, Write];
 let t2 = new [Input, Output, Write];
 let f = file.reader($1);
 
--- foreach! is strict (non-lazy) foreach. It means iterate until
--- the iterable is not done and do not yield control to later
--- constructs (which is the default to support incremental and parallel
-
 foreach line in f.lines() {
-    let r = regex.match(line, "\s*(.)(.)?");
+    let r = regex.search(line, "\s*(.)(.)\1(.)?");
     if r.matched() {
-      yield Output(r.get(1)) Input(1) Write to t;
-      if r.has(2) {
-        yield Output(r.get(2)) to t2;
+      let s = r.get(1);
+
+      yield Input(s, string.concat(s, string.concat(s, s))) to t;
+
+      if r.has(3) {
+        yield Output(r.get(3)) to t2;
       }
     }
 }

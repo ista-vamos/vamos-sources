@@ -153,3 +153,5 @@ class TupleType(IterableType):
 class StringType(IterableType):
     def __repr__(self):
         return "StringTy"
+
+STRING_TYPE = StringType()

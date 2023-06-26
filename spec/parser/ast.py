@@ -99,7 +99,7 @@ class ProcessAST(BaseTransformer):
         method = items[1].children[0]
         params = []
         for item in (items[2] or ()):
-            if isinstance(item, (Constant, CommandLineArgument)):
+            if isinstance(item, Expr):
                 params.append(item)
             else:
                 assert item.data == "name", item
@@ -131,7 +131,7 @@ class ProcessAST(BaseTransformer):
 
     def foreach(self, items):
         iterable = items[1].children[0]
-        if not isinstance(iterable, (Element)):
+        if not isinstance(iterable, Element):
             # then it is AST node
             if iterable.data == "name":
                 iterable = iterable.children[0]
@@ -145,7 +145,13 @@ class ProcessAST(BaseTransformer):
 
     def event(self, items):
         name = items[0].children[0]
-        params = items[1]
+        params = []
+        for p in items[1]:
+            if isinstance(p, Expr):
+                params.append(p)
+            else:
+                assert p.data == "name", p
+                params.append(p.children[0])
         return Event(name, params)
 
     def specarg(self, items):
