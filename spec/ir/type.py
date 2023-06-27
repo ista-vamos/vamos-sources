@@ -26,9 +26,6 @@ class UserType(Type):
 
 
 class EventType(UserType):
-    def __init__(self, name):
-        super().__init__(name)
-
     def __str__(self):
         return f"EventTy({self.name})"
 
@@ -37,8 +34,6 @@ class EventType(UserType):
 
 
 class SimpleType(Type):
-    pass
-
     @property
     def children(self):
         return ()
@@ -82,7 +77,9 @@ class UIntType(NumType):
 
 
 class IterableType(Type):
-    pass
+    @property
+    def children(self):
+        return ()
 
 
 class OutputType(Type):
@@ -90,7 +87,9 @@ class OutputType(Type):
     Type of object that serve as output of traces
     """
 
-    pass
+    @property
+    def children(self):
+        return ()
 
 
 class TraceType(IterableType):
@@ -131,40 +130,59 @@ class HypertraceType(IterableType):
         return self.subtypes
 
 
+def int_type_from_token(token):
+    if token == "Int64":
+        return IntType(64)
+    if token == "Int32":
+        return IntType(32)
+    if token == "Int8":
+        return IntType(8)
+    if token == "Int16":
+        return IntType(16)
+
+    raise NotImplementedError(f"Invalid type: {token}")
+
+
+def uint_type_from_token(token):
+    if token == "UInt64":
+        return UIntType(64)
+    if token == "UInt32":
+        return UIntType(32)
+    if token == "UInt8":
+        return UIntType(8)
+    if token == "UInt16":
+        return UIntType(16)
+
+    raise NotImplementedError(f"Invalid type: {token}")
+
+
 def type_from_token(token):
     if token == "Bool":
         return BoolType()
 
     if token.startswith("Int"):
-        if token == "Int64":
-            return IntType(64)
-        if token == "Int32":
-            return IntType(32)
-        if token == "Int8":
-            return IntType(8)
-        if token == "Int16":
-            return IntType(16)
+        return int_type_from_token(token)
 
     if token.startswith("UInt"):
-        if token == "UInt64":
-            return UIntType(64)
-        if token == "UInt32":
-            return UIntType(32)
-        if token == "UInt8":
-            return UIntType(8)
-        if token == "UInt16":
-            return UIntType(16)
+        return uint_type_from_token(token)
 
     raise NotImplementedError(f"Unknown type: {token}")
 
 
-class TupleType(IterableType):
-    pass
+# class TupleType(IterableType):
+
+#     @property
+#     def children(self):
+#         return self.subtypes
 
 
 class StringType(IterableType):
     def __repr__(self):
         return "StringTy"
+
+    @property
+    def children(self):
+        return ()
 
 
 STRING_TYPE = StringType()
