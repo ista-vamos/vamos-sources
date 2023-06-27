@@ -24,6 +24,7 @@ class UserType(Type):
     def children(self):
         return ()
 
+
 class EventType(UserType):
     def __init__(self, name):
         super().__init__(name)
@@ -83,12 +84,13 @@ class UIntType(NumType):
 class IterableType(Type):
     pass
 
+
 class OutputType(Type):
     """
     Type of object that serve as output of traces
     """
-    pass
 
+    pass
 
 
 class TraceType(IterableType):
@@ -118,8 +120,11 @@ class HypertraceType(IterableType):
         return f"Ht:{{{','.join(map(str, self.subtypes))} {'...' if not self.bounded else ''}}}"
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and self.subtypes == other.subtypes and self.bounded == other.bounded
-
+        return (
+            isinstance(other, type(self))
+            and self.subtypes == other.subtypes
+            and self.bounded == other.bounded
+        )
 
     @property
     def children(self):
@@ -160,5 +165,6 @@ class TupleType(IterableType):
 class StringType(IterableType):
     def __repr__(self):
         return "StringTy"
+
 
 STRING_TYPE = StringType()

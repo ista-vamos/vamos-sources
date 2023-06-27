@@ -25,6 +25,7 @@ class Constant(Expr):
     def children(self):
         return ()
 
+
 #
 # class Var(Expr):
 #     def __init__(self, v):
@@ -40,10 +41,12 @@ class Constant(Expr):
 #     def __repr__(self):
 #         return f"Var({self.name})"
 
+
 class CommandLineArgument(Expr):
     """
     Argument to the specification from the command line ($1, $2, ...)
     """
+
     def __init__(self, n):
         super().__init__()
         self.num = n
@@ -54,6 +57,7 @@ class CommandLineArgument(Expr):
     @property
     def children(self):
         return ()
+
 
 class BoolExpr(Expr):
     def __init__(self):
@@ -139,6 +143,7 @@ class New(Expr):
 
 class IfExpr(Expr):
     "if `cond` { `true_stmts` } [else { `false_stmts` }]"
+
     def __init__(self, cond, true_stmts, false_stmts=None):
         super().__init__(BoolType())
         assert isinstance(cond, Expr), cond

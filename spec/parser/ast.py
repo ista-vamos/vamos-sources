@@ -1,15 +1,41 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
-from ir.ir import Event, Yield, Statement, Let, ForEach, StatementList, Import, Program, OutputDecl
-from ir.type import NumType, type_from_token, UserType, TraceType, HypertraceType, Type, StringType
+from ir.ir import (
+    Event,
+    Yield,
+    Statement,
+    Let,
+    ForEach,
+    StatementList,
+    Import,
+    Program,
+    OutputDecl,
+)
+from ir.type import (
+    NumType,
+    type_from_token,
+    UserType,
+    TraceType,
+    HypertraceType,
+    Type,
+    StringType,
+)
 from ir.element import Identifier, Element
-from ir.expr import Constant, BoolExpr, New, CommandLineArgument, Expr, MethodCall, IfExpr
+from ir.expr import (
+    Constant,
+    BoolExpr,
+    New,
+    CommandLineArgument,
+    Expr,
+    MethodCall,
+    IfExpr,
+)
 
 
 class BaseTransformer(Transformer):
-   #def NUMBER(self, items):
-   #    return Constant(int(items.value), NumType())
+    # def NUMBER(self, items):
+    #    return Constant(int(items.value), NumType())
 
     def constant_string(self, items):
         # strip quotes from the string
@@ -17,7 +43,6 @@ class BaseTransformer(Transformer):
 
     def constant_number(self, items):
         return Constant(int(items[0]), NumType())
-
 
     def NAME(self, items):
         return Identifier(str(items.value))
@@ -98,7 +123,7 @@ class ProcessAST(BaseTransformer):
         module = items[0].children[0]
         method = items[1].children[0]
         params = []
-        for item in (items[2] or ()):
+        for item in items[2] or ():
             if isinstance(item, Expr):
                 params.append(item)
             else:
@@ -112,6 +137,7 @@ class ProcessAST(BaseTransformer):
 
     def start(self, items):
         return Program(items[0], items[1], StatementList(items[2]))
+
     def eventseq(self, items):
         return items
 
@@ -144,9 +170,8 @@ class ProcessAST(BaseTransformer):
                 iterable = iterable.children[0]
             else:
                 raise NotImplementedError(f"Unknown type of iterable: {iterable}")
-        return ForEach(items[0].children[0],
-                       iterable,
-                       items[2])
+        return ForEach(items[0].children[0], iterable, items[2])
+
     def yieldto(self, items):
         return Yield(items[0], items[1].children[0])
 
@@ -172,7 +197,6 @@ class ProcessAST(BaseTransformer):
         assert isinstance(items[1], StatementList), items[1]
         assert items[2] is None or isinstance(items[2], StatementList), items[1]
         return IfExpr(items[0], items[1], items[2])
-
 
     def let(self, items):
         assert len(items) == 2, items
@@ -218,7 +242,7 @@ def transform_ast(lark_ast):
         base,
         comm=ProcessAST(),
         types=ProcessTypes(),
-        #expr=ProcessExpr(),
+        # expr=ProcessExpr(),
     )
     ast = T.transform(lark_ast)
 

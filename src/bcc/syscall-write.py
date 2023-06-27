@@ -9,11 +9,10 @@ from re import compile as regex_compile
 
 from bcc import BPF
 
-importpath.append(abspath(dirname(argv[0])+"../../../python"))
+importpath.append(abspath(dirname(argv[0]) + "../../../python"))
 from shamon import *
 
-submit_next_event=\
-r"""
+submit_next_event = r"""
     event = buffer.ringbuf_reserve(sizeof(struct event));
     if (!event) {
         bpf_trace_printk("FAILED RESERVING SLOT IN BUFFER");
@@ -116,13 +115,17 @@ TRACEPOINT_PROBE(syscalls, sys_enter_write) {
 
     return 0;
 }
-""".replace("@SUBMIT_EVENTS", 18*submit_next_event)
+""".replace(
+    "@SUBMIT_EVENTS", 18 * submit_next_event
+)
+
 
 def printstderr(x):
     print(x, file=stderr)
 
-kind = 2     # FIXME
-gap_kind = 3 # FIXME
+
+kind = 2  # FIXME
+gap_kind = 3  # FIXME
 evid = 1
 
 _regexc = None
@@ -131,6 +134,7 @@ shmbuf = None
 signature = None
 waiting_for_buffer = 0
 partial = b""
+
 
 def push_dropped(shmbuf, count):
     global evid
@@ -143,10 +147,10 @@ def push_dropped(shmbuf, count):
     # push the base data (kind and event ID)
     addr = buffer_partial_push(shmbuf, addr, gap_kind.to_bytes(8, "little"), 8)
     addr = buffer_partial_push(shmbuf, addr, evid.to_bytes(8, "little"), 8)
-    addr = buffer_partial_push(shmbuf, addr,
-                               count.to_bytes(8, "little"), 8)
+    addr = buffer_partial_push(shmbuf, addr, count.to_bytes(8, "little"), 8)
     buffer_finish_push(shmbuf)
     evid += 1
+
 
 def parse_lines(buff, shmbuf, regexc):
     global evid
@@ -154,7 +158,7 @@ def parse_lines(buff, shmbuf, regexc):
         m = regexc.match(line)
         if not m:
             continue
-        #printstderr(f"> \033[33;2m`{line}`\033[0m")
+        # printstderr(f"> \033[33;2m`{line}`\033[0m")
 
         n = 1
 
@@ -169,15 +173,17 @@ def parse_lines(buff, shmbuf, regexc):
         addr = buffer_partial_push(shmbuf, addr, evid.to_bytes(8, "little"), 8)
 
         for o in signature:
-            if o == 'i':
-                addr = buffer_partial_push(shmbuf, addr,
-                                           int(m[n]).to_bytes(4, "little"), 4)
-            elif o == 'l':
-                addr = buffer_partial_push(shmbuf, addr,
-                                           int(m[n]).to_bytes(8, "little"), 8)
-            elif o == 'S':
+            if o == "i":
+                addr = buffer_partial_push(
+                    shmbuf, addr, int(m[n]).to_bytes(4, "little"), 4
+                )
+            elif o == "l":
+                addr = buffer_partial_push(
+                    shmbuf, addr, int(m[n]).to_bytes(8, "little"), 8
+                )
+            elif o == "S":
                 addr = buffer_partial_push_str(shmbuf, addr, evid, m[n])
-            elif o == 'M':
+            elif o == "M":
                 addr = buffer_partial_push_str(shmbuf, addr, evid, m[0])
             else:
                 raise NotImplementedError("Not implemented signature op")
@@ -186,13 +192,14 @@ def parse_lines(buff, shmbuf, regexc):
         buffer_finish_push(shmbuf)
         evid += 1
 
+
 def callback(ctx, data, size):
     global partial
 
     event = get_event(data)
     s = event.buf
-   #printstderr(f"\033[34;1m[fd: {event.fd}, count: {event.count}, "\
-   #            f"off: {event.off}, len: {event.len}]\033[0m")
+    # printstderr(f"\033[34;1m[fd: {event.fd}, count: {event.count}, "\
+    #            f"off: {event.off}, len: {event.len}]\033[0m")
     event_len = event.len
     if event_len == event.count:
         buff = None
@@ -206,7 +213,7 @@ def callback(ctx, data, size):
         parse_lines(buff.decode("utf-8", "ignore"), shmbuf, _regexc)
     elif event_len < event.count:
         if event_len == -1:
-            #printstderr(partial + s)
+            # printstderr(partial + s)
             printstderr(f"... TEXT TOO LONG, DROPPED {event.count} CHARS")
             partial = b""
             raise NotImplementedError("Unhandled situation")
@@ -219,9 +226,13 @@ def callback(ctx, data, size):
     else:
         raise NotImplementedError("Unhandled situation")
 
+
 def usage_and_exit():
-    printstderr(f"Usage: {argv[0]} shmkey event-name regex signature -- command arg1 arg2 ...")
+    printstderr(
+        f"Usage: {argv[0]} shmkey event-name regex signature -- command arg1 arg2 ..."
+    )
     exit(1)
+
 
 def spawn_process(cmd, syncval):
     printstderr("Spawning " + " ".join(cmd))
@@ -234,7 +245,8 @@ def spawn_process(cmd, syncval):
 
     # everything is ready, go!
     execve(cmd[0], cmd, environ.copy())
-            
+
+
 def main():
     global _regexc
     global get_event
@@ -260,18 +272,17 @@ def main():
     event_size = signature_get_size(signature) + 16  # + kind + id
     printstderr(f"Event size: {event_size}")
 
-    shmbuf = create_shared_buffer(shmkey, event_size,
-                                  f"{event_name}:{signature},gap:l")
+    shmbuf = create_shared_buffer(shmkey, event_size, f"{event_name}:{signature},gap:l")
 
-    syncval = Value('i', 0)
+    syncval = Value("i", 0)
     proc = Process(target=spawn_process, args=(cmd, syncval))
     proc.start()
     while syncval.value != 1:
         sleep(0.05)
 
     bpf = BPF(text=src.replace("@PID", str(proc.pid)))
-    get_event = bpf['buffer'].event
-    bpf['buffer'].open_ring_buffer(callback)
+    get_event = bpf["buffer"].event
+    bpf["buffer"].open_ring_buffer(callback)
 
     # wait until a monitor is attached
     printstderr("Waiting for a monitor...")
@@ -295,6 +306,7 @@ def main():
         printstderr(f"Waited for buffer {waiting_for_buffer} cycles")
         destroy_shared_buffer(shmbuf)
         proc.join()
+
 
 if __name__ == "__main__":
     main()

@@ -16,6 +16,7 @@ class Value:
     def __repr__(self):
         return f"({self.value()} : {self.type()})"
 
+
 class Iterable(Value):
     def __init__(self, val, ty):
         super().__init__(val, ty)
@@ -24,13 +25,13 @@ class Iterable(Value):
     def has_next(self):
         raise NotImplementedError(f"Child must override: {type(self)}")
 
-
     def next(self):
         raise NotImplementedError(f"Child must override: {type(self)}")
 
-class Trace(Iterable):
 
+class Trace(Iterable):
     next_id = 1
+
     def __init__(self, ty, name=None, out=None):
         super().__init__(f"<Trace>-{Trace.next_id}" if name is None else name, ty)
         self._id = Trace.next_id
@@ -52,8 +53,10 @@ class Trace(Iterable):
         else:
             self.events.append(elem)
 
+
 class Iterator(Iterable):
     pass
+
 
 class ListIterator(Iterator):
     def __init__(self, val):
@@ -67,6 +70,7 @@ class ListIterator(Iterator):
         val = self.value()[self._pos]
         self._pos += 1
         return val
+
 
 class LazyIterator(Iterator):
     def __init__(self, vals, ty):
@@ -92,11 +96,11 @@ class LazyIterator(Iterator):
         return Constant(self._last_value, self._const_ty)
 
 
-
 class Object:
     """
     Object is identified by its methods.
     """
+
     def __init__(self, ty):
         self._type = ty
 

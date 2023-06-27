@@ -18,7 +18,7 @@ class FileReader(Value):
         del self
 
     def get_method(self, name):
-        if name == 'lines':
+        if name == "lines":
             return lambda state, params: self.lines()
 
     def lines(self):
@@ -42,12 +42,16 @@ class FileWriter(Value):
         assert isinstance(trace, Trace), trace
         assert isinstance(event, Event), event
 
-        print(f"[{trace.id()}]: {trace.size()}: {event.name.pretty_str()}", end="", file=self.fobj)
+        print(
+            f"[{trace.id()}]: {trace.size()}: {event.name.pretty_str()}",
+            end="",
+            file=self.fobj,
+        )
         print(", " if event.params else "", end="", file=self.fobj)
         print(", ".join(map(lambda p: p.value, event.params)), file=self.fobj)
 
     def get_method(self, name):
-        if name == 'push':
+        if name == "push":
             return lambda _, params: self.push(params[0], params[1])
         return None
 
@@ -56,12 +60,10 @@ def reader(state, params):
     assert len(params) == 1, params
     return FileReader(params[0])
 
+
 def writer(state, params):
     assert len(params) == 1, params
     return FileWriter(params[0])
 
 
-METHODS = {
-    'reader' : reader,
-    'writer': writer
-}
+METHODS = {"reader": reader, "writer": writer}

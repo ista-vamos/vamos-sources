@@ -1,4 +1,3 @@
-
 def gen_bpf(evtype, shmkey, events):
     print(events)
 
@@ -7,17 +6,14 @@ def gen_bpf(evtype, shmkey, events):
     output = "regex.c"
     events_num = int(len(events) / 3)
 
-    evs = ", ".join(f"\"{events[i]}\", \"{events[i+2]}\""
-                    for i in range(0, len(events), 3))
-    source_control_src =\
-    f"""
+    evs = ", ".join(f'"{events[i]}", "{events[i+2]}"' for i in range(0, len(events), 3))
+    source_control_src = f"""
     /* Initialize the info about this source */
     struct source_control *control
         = source_control_define({events_num}, {evs});
     assert(control);
     """
-    create_shared_buffer_src =\
-    f"""
+    create_shared_buffer_src = f"""
     /* Create the shared buffer */
     create_shared_buffer(
         \"{shmkey}\", source_control_max_event_size(control), control);
@@ -46,5 +42,3 @@ def gen_bpf(evtype, shmkey, events):
     run_re2c(tmpoutput, output)
 
     return output
-
-

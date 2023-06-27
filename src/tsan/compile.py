@@ -9,9 +9,7 @@ import config
 
 DIR = abspath(dirname(sys.argv[0]))
 LLVM_PASS_DIR = f"{DIR}/../llvm"
-CFLAGS = [
-    "-std=c11"
-]
+CFLAGS = ["-std=c11"]
 SHAMON_INCLUDES = [f"-I{config.vamos_buffers_INCLUDE_DIR}"]
 SHAMON_LIBS = [
     f"{config.vamos_buffers_LIBRARIES_DIRS_core}/libvamos-buffers-arbiter.a",
@@ -27,12 +25,14 @@ SHAMON_LIBS = [
     f"{config.vamos_buffers_LIBRARIES_DIRS_streams}/libvamos-buffers-streams.a",
 ]
 
+
 def get_llvm_version(cc="clang"):
     proc = run([cc, "--version"], stdout=PIPE)
-    ver = proc.stdout.split()[2].split(b'-')[0].split(b'.')
+    ver = proc.stdout.split()[2].split(b"-")[0].split(b".")
     if len(ver) == 3:
         return int(ver[0]), int(ver[1]), int(ver[2])
     return None
+
 
 class CompileOptions:
     def __init__(self):
@@ -123,15 +123,17 @@ def main(argv):
     build_type = config.vamos_buffers_BUILD_TYPE
     release = build_type in ("Release", "RelWithDebInfo")
     if build_type is None or release:
-        CFLAGS.extend(("-g3", "-O3","-DNDEBUG"))
+        CFLAGS.extend(("-g3", "-O3", "-DNDEBUG"))
         lto_flags = ["-flto", "-fno-fat-lto-objects"]
     else:
         CFLAGS.append("-g")
         lto_flags = []
 
     if release and basename(config.vamos_buffers_C_COMPILER) != "clang":
-        print("WARNING: Shamon was build in Release mode but not with clang. "\
-              "It may cause troubles with linking.")
+        print(
+            "WARNING: Shamon was build in Release mode but not with clang. "
+            "It may cause troubles with linking."
+        )
 
     opt_args = []
     llvm_version = get_llvm_version(opts.clang)
@@ -142,12 +144,27 @@ def main(argv):
     compiled_files = [f"{file}.bc" for file in opts.files]
     for f, out in zip(opts.files, compiled_files):
         cmd(
-            [opts.clang, "-emit-llvm", '-fgnu89-inline', "-D__inline=", "-c", "-fsanitize=thread", "-O0", "-o", f"{out}", f]
+            [
+                opts.clang,
+                "-emit-llvm",
+                "-fgnu89-inline",
+                "-D__inline=",
+                "-c",
+                "-fsanitize=thread",
+                "-O0",
+                "-o",
+                f"{out}",
+                f,
+            ]
             + (["-fsanitize=undefined"] if opts.ubsan else [])
             + CFLAGS
             + opts.cflags
         )
-    cmd([opts.linkcmd, "-o", f"{output}.tmp2.bc"] + compiled_files + opts.link_and_instrument)
+    cmd(
+        [opts.linkcmd, "-o", f"{output}.tmp2.bc"]
+        + compiled_files
+        + opts.link_and_instrument
+    )
 
     cmd(
         [
@@ -158,8 +175,9 @@ def main(argv):
             f"{output}.tmp2.bc",
             "-o",
             f"{output}.tmp3.bc",
-        ] + (["-vamos-print-vars-addr"] if opts.dbg else []) +
-        opt_args
+        ]
+        + (["-vamos-print-vars-addr"] if opts.dbg else [])
+        + opt_args
     )
 
     cmd(
@@ -189,22 +207,31 @@ def main(argv):
             + opts.cflags
         )
     cmd(
-        [opts.linkcmd, f"{DIR}/tsan_impl.bc", f"{output}.tmp3.bc", "-o", f"{output}.tmp4.bc"]
+        [
+            opts.linkcmd,
+            f"{DIR}/tsan_impl.bc",
+            f"{output}.tmp3.bc",
+            "-o",
+            f"{output}.tmp4.bc",
+        ]
         + opts.link
         + compiled_files_link
     )
 
     cmd([opts.optcmd, "-O3", f"{output}.tmp4.bc", "-o", f"{output}.tmp5.bc"])
-    cmd([opts.clang, f"{output}.tmp5.bc", "-c", "-o", f"{output}.tmp5.o"]
+    cmd(
+        [opts.clang, f"{output}.tmp5.bc", "-c", "-o", f"{output}.tmp5.o"]
         + opts.link_asm
         + opts.cflags
-        + CFLAGS)
+        + CFLAGS
+    )
     cmd(
         [opts.cc, "-pthread", f"{output}.tmp5.o", "-o", output]
         + (["-fsanitize=address"] if opts.asan else [])
         + (["-fsanitize=undefined"] if opts.ubsan else [])
         + opts.cflags
-        + CFLAGS + lto_flags
+        + CFLAGS
+        + lto_flags
         + SHAMON_LIBS
     )
 

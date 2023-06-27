@@ -9,6 +9,5 @@ def concat(state, params):
     assert params[1].type == STRING_TYPE
     return Constant(params[0].value + params[1].value, STRING_TYPE)
 
-METHODS = {
-    'concat': concat
-}
+
+METHODS = {"concat": concat}

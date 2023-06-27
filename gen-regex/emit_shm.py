@@ -1,8 +1,10 @@
 from utils import *
 
+
 def adjust_regex(regex):
-    """ Transform regex from POSIX syntax to RE2C syntax """
+    """Transform regex from POSIX syntax to RE2C syntax"""
     return regex
+
 
 class SourceGenerator:
     def __init__(self, template, output, shmkey, events):
@@ -26,37 +28,45 @@ class SourceGenerator:
         elif c == "d":
             fmt = "lf"
 
-        write(\
-        f"""
+        write(
+            f"""
          tmp_c = *yypmatch[{n}];
          *yypmatch[{n}] = 0;
          sscanf(yypmatch[{n-1}], \"%@FMT\", &op.@ARG);
          *yypmatch[{n}] = tmp_c;
          addr = buffer_partial_push(shm, addr, &op.@ARG, sizeof(op.@ARG));
-         """.replace("@FMT", fmt).replace("@ARG", c)
-         )
+         """.replace(
+                "@FMT", fmt
+            ).replace(
+                "@ARG", c
+            )
+        )
 
     def gen_push_event(self, sig):
         write = self.tmpfile.write
         for n, c in enumerate(sig, start=1):
-            idx_begin = 2*n
-            idx_end = 2*n+1
-            if c in ('i', 'l', 'f', 'd'):
+            idx_begin = 2 * n
+            idx_end = 2 * n + 1
+            if c in ("i", "l", "f", "d"):
                 self._gen_push_simple_arg(write, idx_end, c)
-            elif c == 'c':
-                write("addr = buffer_partial_push(shm, addr, "
-                      f"yypmatch[{idx_begin}], sizeof(op.c));\n")
-            elif c == 'l':
+            elif c == "c":
+                write(
+                    "addr = buffer_partial_push(shm, addr, "
+                    f"yypmatch[{idx_begin}], sizeof(op.c));\n"
+                )
+            elif c == "l":
                 write(f"tmp_c = *yypmatch[{idx_end}];\n")
                 write(f"*yypmatch[{idx_end}] = 0;\n")
-                write(f"sscanf(yypmatch[{idx_begin}], \"%l\", &op.l);\n")
+                write(f'sscanf(yypmatch[{idx_begin}], "%l", &op.l);\n')
                 write(f"*yypmatch[{idx_end}] = tmp_c;\n")
                 write("addr = buffer_partial_push(shm, addr, &op.l, sizeof(op.k));\n")
-            elif c == 'L':
+            elif c == "L":
                 write("addr = buffer_partial_push_str(shm, addr, ev.base.id, line);\n")
-            elif c == 'M':
-                write("addr = buffer_partial_push_str_n(shm, addr, ev.base.id, "
-                      "yypmatch[0], yypmatch[1] - yypmatch[0]);\n")
+            elif c == "M":
+                write(
+                    "addr = buffer_partial_push_str_n(shm, addr, ev.base.id, "
+                    "yypmatch[0], yypmatch[1] - yypmatch[0]);\n"
+                )
             else:
                 raise NotImplementedError(f"Not implemented yet: {sig}")
 
@@ -64,13 +74,12 @@ class SourceGenerator:
         events = self.events
 
         for i in range(0, len(events), 3):
-            ev_idx = int(i/3)
+            ev_idx = int(i / 3)
             ev_name = events[i]
             ev_regex = adjust_regex(events[i + 1])
             ev_sig = events[i + 2]
 
-            parse_start =\
-            f"""
+            parse_start = f"""
             YYCURSOR = line;
             YYLIMIT = line + len;
 
@@ -85,8 +94,7 @@ class SourceGenerator:
 
                    char tmp_c;
             """
-            parse_end =\
-            f"""
+            parse_end = f"""
                    buffer_finish_push(shm);
                    continue;
                 }}
@@ -105,10 +113,10 @@ class SourceGenerator:
 
     def source_control_src(self):
         events = self.events
-        evs = ", ".join(f"\"{events[i]}\", \"{events[i+2]}\""
-                        for i in range(0, len(events), 3))
-        return\
-        f"""
+        evs = ", ".join(
+            f'"{events[i]}", "{events[i+2]}"' for i in range(0, len(events), 3)
+        )
+        return f"""
         /* Initialize the info about this source */
         struct source_control *control
             = source_control_define({len(events)/3}, {evs});
@@ -116,8 +124,7 @@ class SourceGenerator:
         """
 
     def create_shared_buffer_src(self):
-        return\
-        f"""
+        return f"""
         /* Create the shared buffer */
         create_shared_buffer(
             \"{self.shmkey}\",
@@ -157,5 +164,3 @@ class SourceGenerator:
         run_re2c(self.tmpoutput, self.output)
 
         return self.output
-
-

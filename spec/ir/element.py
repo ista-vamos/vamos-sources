@@ -5,7 +5,6 @@ class Element:
     def type(self):
         return self._type
 
-
     @property
     def children(self):
         raise NotImplementedError(
@@ -45,4 +44,3 @@ class ElementList(list):
 
     def __repr__(self):
         return f"List{super().__repr__()}"
-

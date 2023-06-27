@@ -26,21 +26,21 @@ class ReMatch(Value):
         if name == "get":
             return lambda state, params: self.re_match_get(state, params)
         if name == "has":
-            return lambda state, params: Constant(params[0].value <= self.matched.re.groups, BoolType())
+            return lambda state, params: Constant(
+                params[0].value <= self.matched.re.groups, BoolType()
+            )
         raise RuntimeError(f"Invalid method: {name}")
 
     def __repr__(self):
         return f"ReMatch({self.string.value[:10]}.., {self.matched})"
 
+
 def match(state, params):
     return ReMatch(params[0], params[1])
+
 
 def search(state, params):
     return ReMatch(params[0], params[1], search=True)
 
 
-METHODS = {
-    'match' : match,
-    'search': search
-
-}
+METHODS = {"match": match, "search": search}

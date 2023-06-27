@@ -19,9 +19,11 @@ class Program(Element):
     def children(self):
         return self.statements
 
+
 class Statement(Element):
     def __init__(self):
         super().__init__(None)
+
 
 class StatementList(Element):
     def __init__(self, stmts):
@@ -41,6 +43,7 @@ class StatementList(Element):
             return f"StatementList({s[:40]} ...)"
         return f"StatementList({s})"
 
+
 class Import(Statement):
     def __init__(self, name):
         super().__init__()
@@ -48,6 +51,7 @@ class Import(Statement):
 
     def __repr__(self):
         return f"Import({self.module})"
+
 
 class RunCommand(Statement):
     def __init__(self, cmd):
@@ -57,6 +61,7 @@ class RunCommand(Statement):
     @property
     def children(self):
         return ()
+
 
 class Yield(Statement):
     def __init__(self, events, trace):
@@ -76,6 +81,7 @@ class Let(Statement):
     """
     Bind a name: let `name` = `obj`
     """
+
     def __init__(self, name, obj):
         super().__init__()
 
@@ -94,6 +100,7 @@ class ForEach(Statement):
     """
     foreach `val` in `iterable` { }
     """
+
     def __init__(self, val, iterable, stmts):
         super().__init__()
         self.value = val
@@ -110,6 +117,7 @@ class ForEach(Statement):
     def children(self):
         return self.stmts
 
+
 class OutputDecl(Statement):
     def __init__(self, trace, out):
         super().__init__()
@@ -122,6 +130,7 @@ class OutputDecl(Statement):
 
     def __repr__(self):
         return f"OutputDecl({self.trace}, {self.out})"
+
 
 class Event(Element):
     def __init__(self, name, params):

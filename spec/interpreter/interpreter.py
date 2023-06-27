@@ -18,9 +18,13 @@ class StdoutOutput(Value):
         assert isinstance(trace, Trace), trace
         assert isinstance(event, Event), event
 
-        print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
+        print(
+            f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m",
+            end="",
+        )
         print(", " if event.params else "", end="")
         print(", ".join(map(lambda p: p.value, event.params)))
+
 
 STDOUT_OUTPUT = StdoutOutput()
 
@@ -29,6 +33,7 @@ def dbg(msg, *args, **kwargs):
     return
     print("[dbg] ", end="")
     print(msg, *args, file=sys.stderr, **kwargs)
+
 
 class State:
     def __init__(self):
@@ -63,13 +68,13 @@ class Interpreter:
         self.state = State()
 
         self.handlers = {
-            Let : self.Let,
+            Let: self.Let,
             Yield: self.Yield,
             StatementList: self.StatementList,
             ForEach: self.ForEach,
-            IfExpr : self.IfExpr,
+            IfExpr: self.IfExpr,
             OutputDecl: self.OutputDecl,
-            MethodCall: self.methodcall
+            MethodCall: self.methodcall,
         }
 
         self.executed_stmts = 0
@@ -79,7 +84,10 @@ class Interpreter:
 
     def execute_imports(self):
         from importlib import import_module
-        self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
+
+        self_path = abspath(
+            dirname(readlink(__file__) if islink(__file__) else __file__)
+        )
         sys.path.insert(0, abspath(f"{self_path}/../modules"))
         for mpath in reversed(self.args.modules_dirs):
             sys.path.insert(0, abspath(mpath))
@@ -110,7 +118,6 @@ class Interpreter:
         return method(self.state, list(map(self.eval, name.params)))
 
     def eval(self, name):
-
         if isinstance(name, Identifier):
             val = self.state.try_get(name.name)
             if val is not None:
@@ -123,7 +130,7 @@ class Interpreter:
             return self.methodcall(name)
 
         if isinstance(name, New):
-            out = None#name.
+            out = None  # name.
             return Trace(name.objtype, out=(out or STDOUT_OUTPUT))
 
         if isinstance(name, Event):
@@ -190,16 +197,16 @@ class Interpreter:
 
     def Yield(self, stmt):
         dbg("Handling Yield")
-        #stmt.events
+        # stmt.events
         seval = self.eval
         trace = seval(stmt.trace)
         assert isinstance(trace, Trace), trace
 
         for ev in stmt.events:
             event = seval(ev)
-           #print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
-           #print(", " if event.params else "", end="")
-           #print(", ".join(map(lambda p: p.value, event.params)))
+            # print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
+            # print(", " if event.params else "", end="")
+            # print(", ".join(map(lambda p: p.value, event.params)))
             trace.push(event)
 
     def run(self):
@@ -212,4 +219,3 @@ class Interpreter:
         dbg(f"{self.executed_stmts}: {stmt}")
         self.handlers[type(stmt)](stmt)
         self.executed_stmts += 1
-

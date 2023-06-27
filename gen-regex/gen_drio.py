@@ -1,5 +1,6 @@
 from emit_shm import SourceGenerator
 
+
 class DRioSourceGenerator(SourceGenerator):
     def __init__(self, template, output, shmkey, events):
         super().__init__(template, output, shmkey, events)
@@ -33,7 +34,7 @@ class DRioSourceGenerator(SourceGenerator):
 def gen_drio(evtype, shmkey, events):
     # TODO: we ignore 'evtype' for now
     if evtype == "drio-stdin":
-        return DRioSourceGenerator("drio-stdin.c.in", "drio-stdin.c",
-                                   shmkey, events).gen()
+        return DRioSourceGenerator(
+            "drio-stdin.c.in", "drio-stdin.c", shmkey, events
+        ).gen()
     raise NotImplementedError(f"Not implemented: {evtype}")
-
