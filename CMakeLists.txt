@@ -53,31 +53,8 @@ if (DYNAMORIO_SOURCES)
 endif()
 
 
-if (LLVM_SOURCES)
-	add_subdirectory(llvm)
-endif()
+add_subdirectory(src)
 
-if (DYNAMORIO_SOURCES)
-       add_subdirectory(drfun)
-       add_subdirectory(drregex)
-       add_subdirectory(drsyscalls)
-endif()
-
-if (BPF_SOURCES)
-	add_subdirectory(bcc)
-endif()
-
-add_executable(sendaddr sendaddr.c)
-add_executable(regex regex.c)
-
-target_compile_definitions(regex PRIVATE -D_POSIX_C_SOURCE=200809L)
-
-target_include_directories(sendaddr PRIVATE ${CMAKE_SOURCE_DIR})
-
-target_include_directories(regex PRIVATE ${CMAKE_SOURCE_DIR})
-
-target_link_libraries(regex    PRIVATE vamos-buffers-client)
-target_link_libraries(sendaddr PRIVATE vamos-buffers-client)
 
 get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 get_target_property(vamos-buffers_vamos-buffers-lib vamos-buffers-lib LOCATION)
@@ -94,3 +71,4 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 
 enable_testing()
 add_subdirectory(tests)
+
