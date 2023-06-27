@@ -6,7 +6,23 @@ from interpreter.module import Module
 from interpreter.value import Iterable, Value, Trace, ListIterator, Iterator
 from ir.element import Identifier
 from ir.expr import MethodCall, New, Constant, IfExpr, CommandLineArgument
-from ir.ir import Let, Yield, StatementList, ForEach, Event
+from ir.ir import Let, Yield, StatementList, ForEach, Event, OutputDecl
+from ir.type import OutputType
+
+
+class StdoutOutput(Value):
+    def __init__(self):
+        super().__init__("<stdout>", OutputType())
+
+    def push(self, trace, event):
+        assert isinstance(trace, Trace), trace
+        assert isinstance(event, Event), event
+
+        print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
+        print(", " if event.params else "", end="")
+        print(", ".join(map(lambda p: p.value, event.params)))
+
+STDOUT_OUTPUT = StdoutOutput()
 
 
 def dbg(msg, *args, **kwargs):
@@ -52,6 +68,8 @@ class Interpreter:
             StatementList: self.StatementList,
             ForEach: self.ForEach,
             IfExpr : self.IfExpr,
+            OutputDecl: self.OutputDecl,
+            MethodCall: self.methodcall
         }
 
         self.executed_stmts = 0
@@ -84,6 +102,13 @@ class Interpreter:
     def bind_name(self, name, val):
         self.state.bind(name, val)
 
+    def methodcall(self, name):
+        assert isinstance(name, MethodCall), name
+        method = self.get_method(name)
+        if method is None:
+            raise RuntimeError(f"Unknown method: `{name.lhs.name}.{name.rhs.name}`")
+        return method(self.state, list(map(self.eval, name.params)))
+
     def eval(self, name):
 
         if isinstance(name, Identifier):
@@ -95,13 +120,11 @@ class Interpreter:
             return name
 
         if isinstance(name, MethodCall):
-            method = self.get_method(name)
-            if method is None:
-                raise RuntimeError(f"Unknown method: `{name.lhs.name}.{name.rhs.name}`")
-            return method(self.state, list(map(self.eval, name.params)))
+            return self.methodcall(name)
 
         if isinstance(name, New):
-            return Trace(name.objtype)
+            out = None#name.
+            return Trace(name.objtype, out=(out or STDOUT_OUTPUT))
 
         if isinstance(name, Event):
             # evaluate the parameters in the event
@@ -113,6 +136,12 @@ class Interpreter:
             return self.input.args[n]
 
         raise NotImplementedError(f"Invalid name: {name}")
+
+    def OutputDecl(self, stmt):
+        raise NotImplementedError("Not implemented yet")
+        trace = self.eval(stmt.trace)
+        out = self.eval(stmt.out)
+        print(trace, out)
 
     def StatementList(self, stmt):
         dbg("Handling StatementList")
@@ -168,10 +197,10 @@ class Interpreter:
 
         for ev in stmt.events:
             event = seval(ev)
-            print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
-            print(", " if event.params else "", end="")
-            print(", ".join(map(lambda p: p.value, event.params)))
-            trace.add_elem(event)
+           #print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
+           #print(", " if event.params else "", end="")
+           #print(", ".join(map(lambda p: p.value, event.params)))
+            trace.push(event)
 
     def run(self):
         print(f"[Interpreter] running on program")

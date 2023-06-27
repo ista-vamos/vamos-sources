@@ -31,20 +31,26 @@ class Iterable(Value):
 class Trace(Iterable):
 
     next_id = 1
-    def __init__(self, ty, name=None):
+    def __init__(self, ty, name=None, out=None):
         super().__init__(f"<Trace>-{Trace.next_id}" if name is None else name, ty)
         self._id = Trace.next_id
         Trace.next_id += 1
         self.events = []
+        self._pushed = 0
+        self.out = out
 
     def id(self):
         return self._id
 
     def size(self):
-        return len(self.events)
+        return self._pushed
 
-    def add_elem(self, elem):
-        self.events.append(elem)
+    def push(self, elem):
+        self._pushed += 1
+        if self.out:
+            self.out.push(self, elem)
+        else:
+            self.events.append(elem)
 
 class Iterator(Iterable):
     pass
@@ -84,3 +90,19 @@ class LazyIterator(Iterator):
     def next(self):
         assert self._last_value is not None, "has_next was not called?"
         return Constant(self._last_value, self._const_ty)
+
+
+
+class Object:
+    """
+    Object is identified by its methods.
+    """
+    def __init__(self, ty):
+        self._type = ty
+
+    def type(self):
+        return self._type
+
+
+class Process(Object):
+    pass

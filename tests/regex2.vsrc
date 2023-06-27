@@ -1,0 +1,25 @@
+import file
+import regex
+import string
+
+let O = file.writer("out.trace");
+
+let t0 = new [Input, Output]; -- out to O;
+let t1 = new [Input, Output]; -- "t2" out to O;
+let f = file.reader($1);
+
+foreach line in f.lines() {
+    let r = regex.search(line, "\s*(.)(.)\1(.)?");
+    if r.matched() {
+      let s = r.get(1);
+
+      yield Input(s, string.concat(s, string.concat(s, s))) to t0;
+
+      if r.has(3) {
+        yield Output(r.get(3)) to t1;
+      }
+    }
+}
+
+
+-- out t to file.writer("out.trace");

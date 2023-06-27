@@ -1,0 +1,27 @@
+import file
+import regex
+import string
+
+proc A {
+  let f = file.reader($1);
+  let t0 = new [Input, Output] out to proc B;
+  let t1 = new [Input, Output] out to proc B;
+
+  foreach line in f.lines() {
+    let r = regex.search(line, "\s*(.)(.)\1(.)?");
+    if r.matched() {
+      let s = r.get(1);
+
+      yield Input(s, string.concat(s, string.concat(s, s))) to t0;
+
+      if r.has(3) {
+        yield Output(r.get(3)) to t1;
+      }
+    }
+  }
+}
+
+proc B {
+}
+
+-- out t to file.writer("out.trace");

@@ -83,6 +83,13 @@ class UIntType(NumType):
 class IterableType(Type):
     pass
 
+class OutputType(Type):
+    """
+    Type of object that serve as output of traces
+    """
+    pass
+
+
 
 class TraceType(IterableType):
     def __init__(self, subtypes):

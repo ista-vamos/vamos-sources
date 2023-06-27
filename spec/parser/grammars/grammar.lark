@@ -9,7 +9,7 @@ WSEOL: /\s*\n/
 
 statements: statement+
 
-statement: let | foreach | ifexpr ";"? | newexpr ";" | runcommand | methodcall ";" | yieldto ";"
+statement: let | foreach | ifexpr ";"? | newexpr ";" | out | runcommand | methodcall ";" | yieldto ";"
 
 let: "let" name "=" expr ";"
 ifexpr: "if" (boolexpr | methodcall | value) "{" statements "}" ["else" "{" statements "}"]
@@ -30,6 +30,8 @@ params: (name | expr) ("," (name | expr))*
 constant: NUMBER -> constant_number
          | ESCAPED_STRING -> constant_string
 value: NAME
+
+out: "out" name "to" (name | methodcall) ";"
 
 //%import types.typeannot
 %import types.type

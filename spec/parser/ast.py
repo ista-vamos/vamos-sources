@@ -1,7 +1,7 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
-from ir.ir import Event, Yield, Statement, Let, ForEach, StatementList, Import, Program
+from ir.ir import Event, Yield, Statement, Let, ForEach, StatementList, Import, Program, OutputDecl
 from ir.type import NumType, type_from_token, UserType, TraceType, HypertraceType, Type, StringType
 from ir.element import Identifier, Element
 from ir.expr import Constant, BoolExpr, New, CommandLineArgument, Expr, MethodCall, IfExpr
@@ -119,6 +119,13 @@ class ProcessAST(BaseTransformer):
         assert isinstance(items[0], (Statement, Expr)), items
         assert len(items) == 1, items
         return items[0]
+
+    def out(self, items):
+        assert items[0].data == "name", items[0]
+        assert isinstance(items[1], Expr), (items[1], type(items[1]))
+        trace = items[0].children[0]
+        out = items[1]
+        return OutputDecl(trace, out)
 
     def statements(self, items):
         return StatementList(items)

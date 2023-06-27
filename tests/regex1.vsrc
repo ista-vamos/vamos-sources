@@ -1,22 +1,20 @@
 import file
 import regex
-import string
+import dbg
 
-let t = new [Input, Output, Write];
-let t2 = new [Input, Output, Write];
-let f = file.reader($1);
+let t0 = new [Input];
+let t1 = new [Output];
+
+let f = file.reader("regex1.txt");
 
 foreach line in f.lines() {
-    let r = regex.search(line, "\s*(.)(.)\1(.)?");
+    let r = regex.match(line, "([0-9]+):(.)");
     if r.matched() {
-      let s = r.get(1);
+      let s1 = r.get(1);
+      let s2 = r.get(2);
 
-      yield Input(s, string.concat(s, string.concat(s, s))) to t;
-
-      if r.has(3) {
-        yield Output(r.get(3)) to t2;
-      }
+      yield Input(s1) to t0;
+      yield Output(s2) to t1;
     }
 }
 
---out t to csv.writer("out.csv", "");

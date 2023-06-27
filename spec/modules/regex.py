@@ -29,6 +29,9 @@ class ReMatch(Value):
             return lambda state, params: Constant(params[0].value <= self.matched.re.groups, BoolType())
         raise RuntimeError(f"Invalid method: {name}")
 
+    def __repr__(self):
+        return f"ReMatch({self.string.value[:10]}.., {self.matched})"
+
 def match(state, params):
     return ReMatch(params[0], params[1])
 

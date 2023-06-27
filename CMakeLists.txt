@@ -92,3 +92,5 @@ get_filename_component(vamos-buffers_LIBRARIES_DIRS_streams ${vamos-buffers_vamo
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 	       ${CMAKE_CURRENT_SOURCE_DIR}/config.py)
 
+enable_testing()
+add_subdirectory(tests)

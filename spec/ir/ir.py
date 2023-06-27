@@ -110,17 +110,20 @@ class ForEach(Statement):
     def children(self):
         return self.stmts
 
+class OutputDecl(Statement):
+    def __init__(self, trace, out):
+        super().__init__()
+        self.trace = trace
+        self.out = out
 
-class Object(Element):
-    """
-    Object is identified by its methods.
-    """
-    pass
+    @property
+    def children(self):
+        return ()
 
-class Process(Object):
-    pass
+    def __repr__(self):
+        return f"OutputDecl({self.trace}, {self.out})"
 
-class Event(Object):
+class Event(Element):
     def __init__(self, name, params):
         super().__init__(EventType(name))
         self.name = name
