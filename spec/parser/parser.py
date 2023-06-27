@@ -33,9 +33,6 @@ class LarkParser:
 
 
 class Parser(LarkParser):
-    def __init__(self, debug=False):
-        super().__init__(debug)
-
     def parse_file(self, f):
         return transform_ast(super().parse_file(f))
 
@@ -49,10 +46,11 @@ class Parser(LarkParser):
 def main():
     if len(sys.argv) != 2:
         print("Usage: parser.py file", file=sys.stderr)
-        exit(1)
+        sys.exit(1)
 
     parser = Parser()
-    ast = parser.parse_path(sys.argv[1])
+    # ast =\
+    parser.parse_path(sys.argv[1])
     # print(ast.pretty())
     # print(parser.parse_path(sys.argv[1]).pretty())
 

@@ -21,6 +21,8 @@ class FileReader(Value):
         if name == "lines":
             return lambda state, params: self.lines()
 
+        raise RuntimeError(f"Invalid method: {name}")
+
     def lines(self):
         return LazyIterator(self.fobj, StringType)
 
@@ -56,12 +58,12 @@ class FileWriter(Value):
         return None
 
 
-def reader(state, params):
+def reader(_, params):
     assert len(params) == 1, params
     return FileReader(params[0])
 
 
-def writer(state, params):
+def writer(_, params):
     assert len(params) == 1, params
     return FileWriter(params[0])
 

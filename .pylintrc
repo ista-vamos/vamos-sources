@@ -51,21 +51,22 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=no-self-argument,
-        no-self-use,
-        broad-except,
-        consider-using-sys-exit,
-        fixme,
+disable=fixme,
+       #no-self-argument,
+       #no-self-use,
+       #broad-except,
+       #consider-using-sys-exit,
         missing-docstring, # can be split to missing-class-docstring and missing-function-docstring
         invalid-name,
-        single-string-used-for-slots,
-        global-statement,
-        consider-using-enumerate,
-        protected-access,
-        too-many-arguments,  # FIXME: enable these
-        too-many-statements,
-        too-many-branches,
-        too-many-locals
+       #single-string-used-for-slots,
+       #global-statement,
+       #consider-using-enumerate,
+       #protected-access,
+       #too-many-arguments,  # FIXME: enable these
+       #too-many-statements,
+       #too-many-branches,
+       #too-many-locals,
+        abstract-method
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

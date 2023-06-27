@@ -1,7 +1,7 @@
 from sys import stderr
 
 
-def dbg(state, params):
+def dbg(_, params):
     print("[dbg]", ", ".join(map(str, params)), file=stderr)
 
 

@@ -1,6 +1,16 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
+from ir.element import Identifier, Element
+from ir.expr import (
+    Constant,
+    BoolExpr,
+    New,
+    CommandLineArgument,
+    Expr,
+    MethodCall,
+    IfExpr,
+)
 from ir.ir import (
     Event,
     Yield,
@@ -20,16 +30,6 @@ from ir.type import (
     HypertraceType,
     Type,
     StringType,
-)
-from ir.element import Identifier, Element
-from ir.expr import (
-    Constant,
-    BoolExpr,
-    New,
-    CommandLineArgument,
-    Expr,
-    MethodCall,
-    IfExpr,
 )
 
 

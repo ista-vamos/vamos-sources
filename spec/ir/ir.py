@@ -24,6 +24,10 @@ class Statement(Element):
     def __init__(self):
         super().__init__(None)
 
+    @property
+    def children(self):
+        return ()
+
 
 class StatementList(Element):
     def __init__(self, stmts):
@@ -51,6 +55,10 @@ class Import(Statement):
 
     def __repr__(self):
         return f"Import({self.module})"
+
+    @property
+    def children(self):
+        return ()
 
 
 class RunCommand(Statement):

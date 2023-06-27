@@ -1,38 +1,38 @@
+import argparse
+import os
 import sys
+from multiprocessing import Process
 from os import readlink
 from os.path import islink, dirname, abspath
-from multiprocessing import Process
-import os
 
 from interpreter.interpreter import Interpreter
 from parser.parser import Parser
-import argparse
 
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
 sys.path.insert(0, abspath(f"{self_path}/.."))
 
 
-def interpret(program, inp, args):
+def interpret(program, inp, cmdargs):
     print("module name:", __name__)
     print("Parent process:", os.getppid())
     print("Interpreter PID:", os.getpid())
 
-    I = Interpreter(program, inp, args)
+    I = Interpreter(program, inp, cmdargs)
     I.run()
 
 
-def main(args):
+def main(cmdargs):
     parser = Parser()
     # print(args)
     programs = []
-    for inp in args.inputs:
+    for inp in cmdargs.inputs:
         ast = parser.parse_path(inp.file)
         programs.append((ast, inp))
         # print(ast.pretty())
 
     processes = []
     for p, inp in programs:
-        proc = Process(target=interpret, args=(p, inp, args))
+        proc = Process(target=interpret, args=(p, inp, cmdargs))
         processes.append(proc)
         proc.run()
 
@@ -42,9 +42,9 @@ def main(args):
 
 
 class Input:
-    def __init__(self, spec, args):
+    def __init__(self, spec, cmdargs):
         self.file = spec
-        self.args = args
+        self.args = cmdargs
 
     def __repr__(self):
         return f"Input({self.file}, args={self.args})"
@@ -55,7 +55,8 @@ def parse_arguments():
     parser.add_argument(
         "files",
         nargs="+",
-        help="Input files (.vsrc, additional C++ files) and their arguments (each .vsrc file can be followed by arguments)",
+        help="Input files (.vsrc, additional C++ files) and their arguments"
+        " (each .vsrc file can be followed by arguments)",
     )
     parser.add_argument(
         "--out-dir",
@@ -84,8 +85,8 @@ def parse_arguments():
         "--overwrite-default",
         action="append",
         default=[],
-        help="Do not generate the default version of the given file, its replacement is assumed to be "
-        "provided as an additional source.",
+        help="Do not generate the default version of the given file, "
+        "its replacement is assumed to be provided as an additional source.",
     )
     args = parser.parse_args()
 
@@ -115,5 +116,5 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
-    main(args)
+    cmd_args = parse_arguments()
+    main(cmd_args)

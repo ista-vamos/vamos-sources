@@ -177,7 +177,7 @@ class Interpreter:
         # has next element?
         rhs = self.eval(stmt.iterable)
         if isinstance(rhs, Trace):
-            iterable = ListIterator(rhs.events, rhs.type())
+            iterable = ListIterator(rhs.events)
         elif isinstance(rhs, Iterator):
             iterable = rhs
         else:
@@ -204,13 +204,14 @@ class Interpreter:
 
         for ev in stmt.events:
             event = seval(ev)
-            # print(f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m", end="")
+            # print(f"[{trace.id()}]: {trace.size()}: "
+            #        "\033[0;34m{event.name.pretty_str()}\033[0m", end="")
             # print(", " if event.params else "", end="")
             # print(", ".join(map(lambda p: p.value, event.params)))
             trace.push(event)
 
     def run(self):
-        print(f"[Interpreter] running on program")
+        print("[Interpreter] running on program")
         execute = self.exec
         for stmt in self.program:
             execute(stmt)

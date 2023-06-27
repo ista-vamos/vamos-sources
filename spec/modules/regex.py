@@ -6,7 +6,7 @@ from ir.type import StringType, BoolType
 
 
 class ReMatch(Value):
-    def __init__(self, s, rexp, search=False):
+    def __init__(self, s, rexp, _search=False):
         super().__init__("<REMatch>", "<rematch>")
         self.string = s
 
@@ -14,9 +14,9 @@ class ReMatch(Value):
         assert rexp.type == StringType(), rexp
         re = str(rexp.value)
         text = str(s.value)
-        self.matched = re_search(re, text) if search else re_match(re, text)
+        self.matched = re_search(re, text) if _search else re_match(re, text)
 
-    def re_match_get(self, state, params):
+    def re_match_get(self, _, params):
         assert isinstance(params[0].value, int), params
         return Constant(self.matched[params[0].value], StringType())
 
@@ -35,12 +35,12 @@ class ReMatch(Value):
         return f"ReMatch({self.string.value[:10]}.., {self.matched})"
 
 
-def match(state, params):
+def match(_, params):
     return ReMatch(params[0], params[1])
 
 
-def search(state, params):
-    return ReMatch(params[0], params[1], search=True)
+def search(_, params):
+    return ReMatch(params[0], params[1], _search=True)
 
 
 METHODS = {"match": match, "search": search}

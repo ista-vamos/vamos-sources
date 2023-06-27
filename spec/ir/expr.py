@@ -3,7 +3,9 @@ from ir.type import BoolType
 
 
 class Expr(Element):
-    pass
+    """
+    Class representing an expression in the language
+    """
 
 
 class Constant(Expr):
@@ -63,6 +65,10 @@ class BoolExpr(Expr):
     def __init__(self):
         super().__init__()
         self.type = BoolType
+
+    @property
+    def children(self):
+        return ()
 
 
 class And(BoolExpr):

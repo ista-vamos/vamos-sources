@@ -2,7 +2,7 @@ from ir.expr import Constant
 from ir.type import STRING_TYPE
 
 
-def concat(state, params):
+def concat(_, params):
     assert isinstance(params[0], Constant)
     assert params[0].type == STRING_TYPE
     assert isinstance(params[1], Constant)
