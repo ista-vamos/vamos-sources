@@ -28,12 +28,14 @@ class Iterable(Value):
     def next(self):
         raise NotImplementedError(f"Child must override: {type(self)}")
 
+
 class Tuple(Iterable):
     def __init__(self, vals, ty):
         super().__init__(vals, ty)
 
     def __repr__(self):
         return f"Tuple({','.join(map(str, self.value()))})"
+
 
 class Trace(Iterable):
     next_id = 1

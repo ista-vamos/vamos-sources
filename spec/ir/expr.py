@@ -27,6 +27,7 @@ class Constant(Expr):
     def children(self):
         return ()
 
+
 class TupleExpr(Expr):
     def __init__(self, vals, ty):
         super().__init__()
@@ -39,6 +40,7 @@ class TupleExpr(Expr):
     @property
     def children(self):
         return self.values
+
 
 #
 # class Var(Expr):

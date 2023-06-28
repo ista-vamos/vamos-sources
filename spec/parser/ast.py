@@ -2,14 +2,45 @@ from lark import Transformer
 from lark.visitors import merge_transformers
 
 from ir.element import Identifier, Element
-from ir.expr import Constant, BoolExpr, New, CommandLineArgument, Expr, MethodCall, IfExpr, TupleExpr, IsIn
-from ir.ir import Event, Yield, Statement, Let, ForEach, StatementList, Import, Program, OutputDecl, Continue, Break
-from ir.type import NumType, type_from_token, UserType, TraceType, HypertraceType, Type, StringType, TupleType
+from ir.expr import (
+    Constant,
+    BoolExpr,
+    New,
+    CommandLineArgument,
+    Expr,
+    MethodCall,
+    IfExpr,
+    TupleExpr,
+    IsIn,
+)
+from ir.ir import (
+    Event,
+    Yield,
+    Statement,
+    Let,
+    ForEach,
+    StatementList,
+    Import,
+    Program,
+    OutputDecl,
+    Continue,
+    Break,
+)
+from ir.type import (
+    NumType,
+    type_from_token,
+    UserType,
+    TraceType,
+    HypertraceType,
+    Type,
+    StringType,
+    TupleType,
+)
 
 
 class BaseTransformer(Transformer):
-   #def NUMBER(self, items):
-   #    return Constant(int(items.value), NumType())
+    # def NUMBER(self, items):
+    #    return Constant(int(items.value), NumType())
     def constant_tuple(self, items):
         return TupleExpr(items, TupleType([it.type for it in items]))
 
@@ -37,6 +68,7 @@ class ProcessExpr(BaseTransformer):
 
     def is_in(self, items):
         return IsIn(items[0], items[1])
+
 
 #     def eq(self, items):
 #         assert len(items) == 2, items
@@ -173,7 +205,7 @@ class ProcessAST(BaseTransformer):
     def event(self, items):
         name = items[0].children[0]
         params = []
-        for p in (items[1] or ()):
+        for p in items[1] or ():
             if isinstance(p, Expr):
                 params.append(p)
             else:

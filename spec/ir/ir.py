@@ -125,6 +125,7 @@ class ForEach(Statement):
     def children(self):
         return self.stmts
 
+
 class Continue(Statement):
     @property
     def children(self):
