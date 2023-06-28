@@ -2,7 +2,8 @@ import rand
 import common
 
 Event Input, Output {
-  x: Int32
+  x: Int32,
+  y: UInt32
 }
 
 Event Dummy;

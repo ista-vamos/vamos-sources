@@ -36,6 +36,7 @@ from ir.type import (
     StringType,
     TupleType,
 )
+from parser.decls import DataField, EventDecl
 
 
 class BaseTransformer(Transformer):
@@ -124,6 +125,32 @@ class ProcessTypes(BaseTransformer):
     def type(self, items):
         return items[0]
 
+class ProcessEvents(BaseTransformer):
+    def __init__(self):
+        super().__init__()
+        self.eventdecls = {}
+
+    def datafield(self, items):
+        name = items[0].children[0]
+        ty = items[1].children[0]
+        assert isinstance(ty, Type), items[1]
+        return DataField(name, ty)
+
+    def fieldsdecl(self, items):
+        return items
+
+    def eventdecl(self, items):
+        names = items[0].children
+        fields = items[1] if len(items) > 1 else []
+
+        decls = []
+        for name in names:
+            assert name.name not in self.eventdecls, name
+            ev = EventDecl(name, fields)
+            self.eventdecls[name.name] = ev
+            decls.append(ev)
+        return decls
+
 
 class ProcessAST(BaseTransformer):
     def __init__(self):
@@ -152,12 +179,13 @@ class ProcessAST(BaseTransformer):
                 params.append(item.children[0])
         return MethodCall(module, method, params)
 
+
     def expr(self, items):
         assert isinstance(items[0], Expr), items
         return items[0]
 
     def start(self, items):
-        return Program(items[0], items[1], StatementList(items[2]))
+        return Program(items[0][1], items[0][0], StatementList(items[1]))
 
     def eventseq(self, items):
         return items
@@ -184,10 +212,33 @@ class ProcessAST(BaseTransformer):
         return StatementList(items)
 
     def imports(self, items):
+        self.imports = items
+        return items
+
+    def events_and_imports(self, items):
+        _imports = items[0]
+        _events = items[1]
+        assert all((e.name.name in self.eventdecls for e in _events)), (_events, self.eventdecls)
         return items
 
     def importmod(self, items):
         return Import(items[0].children[0])
+
+    def eventsspec(self, items):
+        if items[0] is not None:
+            it = items[0]
+            if it.data == "eventsfile":
+                eventsfile = it.children[0]
+                raise NotImplementedError(f"events file: {eventsfile}... not implemented")
+        allevents = []
+        for it in items[1:]:
+            assert it.data == "eventdecl", it
+            events = it.children[0]
+            allevents.extend(events)
+            for ev in events:
+                assert ev.name.name not in self.eventdecls, ev
+                self.eventdecls[ev.name.name] = ev
+        return allevents
 
     def foreach(self, items):
         iterable = items[1].children[0]
@@ -267,7 +318,8 @@ def transform_ast(lark_ast):
     base = ProcessAST()
     T = merge_transformers(
         base,
-        comm=ProcessAST(),
+        comm=BaseTransformer(),
+        events=merge_transformers(ProcessEvents(), comm=BaseTransformer(), types=ProcessTypes()),
         types=ProcessTypes(),
         expr=ProcessExpr(),
     )

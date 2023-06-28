@@ -1,8 +1,10 @@
-start: (eventsspec [imports] | imports eventsspec) statements
+start: events_and_imports statements
+events_and_imports: (eventsspec [imports] | imports eventsspec)
 // for inlined specifications
 inlined: imports statements
 
-eventsspec: ["events" ESCAPED_STRING ";"? WSEOL] eventdecl+
+eventsspec: [eventsfile] eventdecl+
+eventsfile: "events" ESCAPED_STRING ";"? WSEOL
 
 imports: importmod+
 importmod: "import" name ";"? WSEOL
@@ -39,7 +41,7 @@ value: NAME
 %import types.type
 %import expr.boolexpr
 %import expr.constant
-%import events.eventdecl
+%import events.eventdecl_imp -> eventdecl
 %import comm.name
 
 %import common.CNAME -> NAME

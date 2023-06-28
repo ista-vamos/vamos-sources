@@ -16,10 +16,10 @@ class DataField(Element):
         return ()
 
     def __str__(self):
-        return f"{self.name} : {self.type}"
+        return f"{self.name} : {self.type()}"
 
     def __repr__(self):
-        return f"DataField({self.name} : {self.type})"
+        return f"DataField({self.name} : {self.type()})"
 
 
 class EventDecl(Decl):

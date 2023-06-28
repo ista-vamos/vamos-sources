@@ -1,4 +1,5 @@
 
+eventdecl_imp: eventdecl
 eventdecl: "Event" (name | namelist) fieldsdecl [";"]
            | "Event" (name | namelist) ";"
 fieldsdecl: "{" datafield ("," datafield)* "}" | "{" "}"
