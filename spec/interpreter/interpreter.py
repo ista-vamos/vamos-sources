@@ -139,7 +139,8 @@ class Interpreter:
 
         if isinstance(name, CommandLineArgument):
             n = int(name.num) - 1
-            assert n < len(self.input.args), self.input
+            if n >= len(self.input.args):
+                raise RuntimeError(f"Asking for command line argument {n}, but there is no such argument: {self.input}")
             return self.input.args[n]
 
         raise NotImplementedError(f"Invalid name: {name}")

@@ -1,4 +1,4 @@
-from interpreter.value import Value, LazyIterator, Trace
+from interpreter.value import Value, FiniteIterator, Trace
 from ir.expr import Constant
 from ir.ir import Event
 from ir.type import IterableType, StringType, OutputType, STRING_TYPE
@@ -24,7 +24,7 @@ class FileReader(Value):
         raise RuntimeError(f"Invalid method: {name}")
 
     def lines(self):
-        return LazyIterator(self.fobj, StringType)
+        return FiniteIterator(self.fobj, StringType)
 
 
 class FileWriter(Value):
