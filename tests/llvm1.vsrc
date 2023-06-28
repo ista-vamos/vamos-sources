@@ -1,0 +1,15 @@
+import llvm
+
+let P = llvm.compile_and_load($1);
+
+foreach ll@{_}*Store(x, v) in P {
+  if ll ~ l1@Load(x) Load(y) {
+    llvm.replace(l1[0], Store(y, v))
+  }
+}
+
+foreach I in P.instructions() {
+  if I.isa(Call) && I.cast(Call).function() ~ "__ubsan_" {
+    llvm.insert_before(I, Store(y, v));
+  }
+}
