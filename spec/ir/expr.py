@@ -27,6 +27,18 @@ class Constant(Expr):
     def children(self):
         return ()
 
+class TupleExpr(Expr):
+    def __init__(self, vals, ty):
+        super().__init__()
+        self.values = vals
+        self.type = ty
+
+    def __repr__(self):
+        return f"TupleExpr({','.join(map(str, self.values))})"
+
+    @property
+    def children(self):
+        return self.values
 
 #
 # class Var(Expr):
@@ -126,6 +138,26 @@ class CompareExpr(BoolExpr):
 
     def __repr__(self):
         return f"CompareExpr({self.lhs} {self.comparison} {self.rhs})"
+
+    @property
+    def children(self):
+        return [self.lhs, self.rhs]
+
+
+class IsIn(BoolExpr):
+    def __init__(self, lhs, rhs):
+        super().__init__()
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def pretty_str(self):
+        return f"{self.lhs.pretty_str()} in {self.rhs.pretty_str()}"
+
+    def __str__(self):
+        return f"{self.lhs} in {self.rhs}"
+
+    def __repr__(self):
+        return f"IsIn({self.lhs}, {self.rhs})"
 
     @property
     def children(self):

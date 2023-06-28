@@ -2,40 +2,16 @@ from lark import Transformer
 from lark.visitors import merge_transformers
 
 from ir.element import Identifier, Element
-from ir.expr import (
-    Constant,
-    BoolExpr,
-    New,
-    CommandLineArgument,
-    Expr,
-    MethodCall,
-    IfExpr,
-)
-from ir.ir import (
-    Event,
-    Yield,
-    Statement,
-    Let,
-    ForEach,
-    StatementList,
-    Import,
-    Program,
-    OutputDecl,
-)
-from ir.type import (
-    NumType,
-    type_from_token,
-    UserType,
-    TraceType,
-    HypertraceType,
-    Type,
-    StringType,
-)
+from ir.expr import Constant, BoolExpr, New, CommandLineArgument, Expr, MethodCall, IfExpr, TupleExpr, IsIn
+from ir.ir import Event, Yield, Statement, Let, ForEach, StatementList, Import, Program, OutputDecl, Continue, Break
+from ir.type import NumType, type_from_token, UserType, TraceType, HypertraceType, Type, StringType, TupleType
 
 
 class BaseTransformer(Transformer):
-    # def NUMBER(self, items):
-    #    return Constant(int(items.value), NumType())
+   #def NUMBER(self, items):
+   #    return Constant(int(items.value), NumType())
+    def constant_tuple(self, items):
+        return TupleExpr(items, TupleType([it.type for it in items]))
 
     def constant_string(self, items):
         # strip quotes from the string
@@ -44,11 +20,24 @@ class BaseTransformer(Transformer):
     def constant_number(self, items):
         return Constant(int(items[0]), NumType())
 
+    def constant(self, items):
+        assert len(items) == 1
+        assert isinstance(items[0], Expr), items[0]
+        return items[0]
+
     def NAME(self, items):
         return Identifier(str(items.value))
 
 
-# class ProcessExpr(BaseTransformer):
+class ProcessExpr(BaseTransformer):
+    def const_or_var(self, items):
+        if isinstance(items[0], (Identifier, Expr)):
+            return items[0]
+        raise NotImplementedError(str(items[0], type(items[0])))
+
+    def is_in(self, items):
+        return IsIn(items[0], items[1])
+
 #     def eq(self, items):
 #         assert len(items) == 2, items
 #         return CompareExpr("==", items[0].children[0], items[1].children[0])
@@ -141,6 +130,12 @@ class ProcessAST(BaseTransformer):
     def eventseq(self, items):
         return items
 
+    def cont(self, _):
+        return Continue()
+
+    def brk(self, _):
+        return Break()
+
     def statement(self, items):
         assert isinstance(items[0], (Statement, Expr)), items
         assert len(items) == 1, items
@@ -178,7 +173,7 @@ class ProcessAST(BaseTransformer):
     def event(self, items):
         name = items[0].children[0]
         params = []
-        for p in items[1]:
+        for p in (items[1] or ()):
             if isinstance(p, Expr):
                 params.append(p)
             else:
@@ -242,7 +237,7 @@ def transform_ast(lark_ast):
         base,
         comm=ProcessAST(),
         types=ProcessTypes(),
-        # expr=ProcessExpr(),
+        expr=ProcessExpr(),
     )
     ast = T.transform(lark_ast)
 

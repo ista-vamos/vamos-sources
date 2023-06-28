@@ -1,0 +1,12 @@
+
+eventdecl: "Event" (name | namelist) fieldsdecl [";"]
+           | "Event" (name | namelist) ";"
+fieldsdecl: "{" datafield ("," datafield)* "}" | "{" "}"
+datafield: name typeannot
+
+%import comm.name
+%import comm.namelist
+%import types.typeannot
+
+%import common.WS
+%ignore WS

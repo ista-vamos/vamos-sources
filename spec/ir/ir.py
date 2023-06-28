@@ -125,6 +125,23 @@ class ForEach(Statement):
     def children(self):
         return self.stmts
 
+class Continue(Statement):
+    @property
+    def children(self):
+        return ()
+
+    def __repr__(self):
+        return f"Continue"
+
+
+class Break(Statement):
+    @property
+    def children(self):
+        return ()
+
+    def __repr__(self):
+        return f"Break"
+
 
 class OutputDecl(Statement):
     def __init__(self, trace, out):

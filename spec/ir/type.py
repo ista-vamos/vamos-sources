@@ -169,11 +169,12 @@ def type_from_token(token):
     raise NotImplementedError(f"Unknown type: {token}")
 
 
-# class TupleType(IterableType):
+class TupleType(IterableType):
+    def __init__(self, elems_tys):
+        self.subtypes = elems_tys
 
-#     @property
-#     def children(self):
-#         return self.subtypes
+    def __repr__(self):
+        return f"TupleTy({', '.join(map(str, self.subtypes))})"
 
 
 class StringType(IterableType):

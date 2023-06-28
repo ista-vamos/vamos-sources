@@ -1,17 +1,23 @@
-start: [eventsspec] [imports] statements
+start: (eventsspec [imports] | imports eventsspec) statements
 // for inlined specifications
 inlined: imports statements
 
-eventsspec: "events" ESCAPED_STRING ";"? WSEOL
+eventsspec: ["events" ESCAPED_STRING ";"? WSEOL] eventdecl+
+
 imports: importmod+
 importmod: "import" name ";"? WSEOL
 WSEOL: /\s*\n/
 
 statements: statement+
 
-statement: let | foreach | ifexpr ";"? | newexpr ";" | out | runcommand | methodcall ";" | yieldto ";"
+statement: _statement_expr ";"? | _statement ";"
+_statement_expr: let | foreach | ifexpr | newexpr
+_statement: runcommand | methodcall | yieldto | cont | brk
 
-let: "let" name "=" expr ";"
+cont: "continue"
+brk: "break"
+
+let: "let" name "=" expr
 ifexpr: "if" (boolexpr | methodcall | value) "{" statements "}" ["else" "{" statements "}"]
 foreach: "foreach" name "in" iterable "{" statements "}"
 runcommand: "run" /[^\n]/*
@@ -27,23 +33,21 @@ iterable: name | methodcall
 newexpr: "new" type
 methodcall: name "." name "(" [params] ")"
 params: (name | expr) ("," (name | expr))*
-constant: NUMBER -> constant_number
-         | ESCAPED_STRING -> constant_string
 value: NAME
-
-out: "out" name "to" (name | methodcall) ";"
 
 //%import types.typeannot
 %import types.type
 %import expr.boolexpr
+%import expr.constant
+%import events.eventdecl
 %import comm.name
-%import comm.namelist
 
 %import common.CNAME -> NAME
 %import common.NUMBER
 %import common.ESCAPED_STRING
 %import common.WS_INLINE
 %import common.WS
+
 COMMENT: "--" /[^\n]/*
 
 %ignore COMMENT

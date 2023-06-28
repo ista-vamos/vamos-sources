@@ -2,5 +2,15 @@
 boolexpr: "true" | "false" | NAME
           | "!" boolexpr     -> not
           | "(" boolexpr ")"
+          | const_or_var "in" const_or_var -> is_in
+
+constant: NUMBER -> constant_number
+         | ESCAPED_STRING -> constant_string
+         | constant_tuple
+const_or_var: NAME | constant
+tuple: "(" const_or_var ("," const_or_var)+  ")"
+constant_tuple: "(" constant ("," constant)+  ")"
 
 %import common.CNAME -> NAME
+%import common.NUMBER
+%import common.ESCAPED_STRING
