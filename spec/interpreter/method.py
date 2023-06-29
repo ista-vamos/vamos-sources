@@ -1,4 +1,3 @@
-
 class Method:
     def __init__(self, name, types, retty, fn):
         """

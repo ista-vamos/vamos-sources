@@ -33,4 +33,9 @@ class State:
         return self.values.get(name)
 
     def __repr__(self):
-        return "-- values --\n"  + '\n'.join(map(str, self.values.items())) + "\n-- scopes --\n" + '\n'.join(map(str, self.scopes()))
+        return (
+            "-- values --\n"
+            + "\n".join(map(str, self.values.items()))
+            + "\n-- scopes --\n"
+            + "\n".join(map(str, self.scopes()))
+        )

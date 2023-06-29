@@ -17,5 +17,6 @@ def string_as(_, params):
         return Constant(int(obj.value), ty)
     raise NotImplementedError(f"Cast {obj} to {ty}")
 
+
 def initialize_type_methods():
     StringType.methods["as"] = Method("String.as", [STRING_TYPE], Type(), string_as)

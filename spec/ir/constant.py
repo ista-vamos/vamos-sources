@@ -1,5 +1,6 @@
 from ir.expr import Expr
 
+
 class Constant(Expr):
     def __init__(self, c, ty):
         super().__init__(ty)

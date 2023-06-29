@@ -1,4 +1,3 @@
-
 class Type:
     methods = {}
 
@@ -51,7 +50,9 @@ class BoolType(SimpleType):
     def __str__(self):
         return "Bool"
 
+
 BOOL_TYPE = BoolType()
+
 
 class NumType(SimpleType):
     def __init__(self, bitwidth=None):
@@ -91,12 +92,15 @@ class IterableType(Type):
     def children(self):
         return ()
 
+
 ITERABLE_TYPE = IterableType()
+
 
 class IteratorType(Type):
     @property
     def children(self):
         return ()
+
 
 ITERATOR_TYPE = IteratorType()
 
@@ -200,16 +204,13 @@ class TupleType(IterableType):
 
 
 class StringType(IterableType):
-
     methods = {}
 
     def __init__(self):
         super().__init__()
 
-
     def __repr__(self):
         return "StringTy"
-
 
     @property
     def children(self):
@@ -218,6 +219,7 @@ class StringType(IterableType):
 
 STRING_TYPE = StringType()
 
+
 class ObjectType(Type):
     def __repr__(self):
         return "ObjectTy"
@@ -225,5 +227,6 @@ class ObjectType(Type):
     @property
     def children(self):
         return ()
+
 
 OBJECT_TYPE = ObjectType()

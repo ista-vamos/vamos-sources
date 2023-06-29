@@ -10,7 +10,8 @@ from ir.expr import (
     MethodCall,
     IfExpr,
     TupleExpr,
-    IsIn, CompareExpr,
+    IsIn,
+    CompareExpr,
 )
 from ir.constant import Constant
 from ir.ir import (
@@ -60,6 +61,7 @@ class BaseTransformer(Transformer):
     def NAME(self, items):
         return Identifier(str(items.value))
 
+
 class ProcessTypes(BaseTransformer):
     def simpletype(self, items):
         assert len(items) == 1, items
@@ -76,6 +78,7 @@ class ProcessTypes(BaseTransformer):
 
     def type(self, items):
         return items[0]
+
 
 class ProcessEvents(BaseTransformer):
     def __init__(self):
@@ -103,11 +106,13 @@ class ProcessEvents(BaseTransformer):
             decls.append(ev)
         return decls
 
+
 def identifier_or_expr(item):
     if isinstance(item, Expr):
         return item
     assert item.data == "name"
     return item.children[0]
+
 
 class ProcessAST(BaseTransformer):
     def __init__(self):
@@ -128,21 +133,31 @@ class ProcessAST(BaseTransformer):
 
     def _compare(self, comp, items):
         assert len(items) == 2, items
-        return CompareExpr(comp,
-                           identifier_or_expr(items[0]),
-                           identifier_or_expr(items[1]))
+        return CompareExpr(
+            comp, identifier_or_expr(items[0]), identifier_or_expr(items[1])
+        )
 
-    def eq(self, items): return self._compare("==", items)
-    def ne(self, items): return self._compare("!=", items)
-    def le(self, items): return self._compare("<=", items)
-    def ge(self, items): return self._compare(">=", items)
-    def lt(self, items): return self._compare("<", items)
-    def gt(self, items): return self._compare(">", items)
+    def eq(self, items):
+        return self._compare("==", items)
+
+    def ne(self, items):
+        return self._compare("!=", items)
+
+    def le(self, items):
+        return self._compare("<=", items)
+
+    def ge(self, items):
+        return self._compare(">=", items)
+
+    def lt(self, items):
+        return self._compare("<", items)
+
+    def gt(self, items):
+        return self._compare(">", items)
 
     def compareexpr(self, items):
         assert len(items) == 1, items
         return items[0]
-
 
     #   def land(self, items):
     #       if len(items) == 1:
@@ -172,7 +187,6 @@ class ProcessAST(BaseTransformer):
         assert isinstance(rhs, (Expr, Identifier)), rhs
         return IsIn(lhs, rhs)
 
-
     def newexpr(self, items):
         return New(items[0])
 
@@ -190,7 +204,6 @@ class ProcessAST(BaseTransformer):
                 assert item.data == "name", item
                 params.append(item.children[0])
         return MethodCall(lhs, method, params)
-
 
     def expr(self, items):
         if isinstance(items[0], Expr):
@@ -233,7 +246,10 @@ class ProcessAST(BaseTransformer):
     def events_and_imports(self, items):
         _imports = items[0]
         _events = items[1]
-        assert all((e.name.name in self.eventdecls for e in _events)), (_events, self.eventdecls)
+        assert all((e.name.name in self.eventdecls for e in _events)), (
+            _events,
+            self.eventdecls,
+        )
         return items
 
     def importmod(self, items):
@@ -244,7 +260,9 @@ class ProcessAST(BaseTransformer):
             it = items[0]
             if it.data == "eventsfile":
                 eventsfile = it.children[0]
-                raise NotImplementedError(f"events file: {eventsfile}... not implemented")
+                raise NotImplementedError(
+                    f"events file: {eventsfile}... not implemented"
+                )
         allevents = []
         for it in items[1:]:
             assert it.data == "eventdecl", it
@@ -335,9 +353,11 @@ def transform_ast(lark_ast):
     T = merge_transformers(
         base,
         comm=BaseTransformer(),
-        events=merge_transformers(ProcessEvents(), comm=BaseTransformer(), types=ProcessTypes()),
+        events=merge_transformers(
+            ProcessEvents(), comm=BaseTransformer(), types=ProcessTypes()
+        ),
         types=ProcessTypes(),
-        #expr=ProcessExpr(),
+        # expr=ProcessExpr(),
     )
     ast = T.transform(lark_ast)
 

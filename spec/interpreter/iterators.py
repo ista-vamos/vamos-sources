@@ -27,6 +27,7 @@ class ListIterator(Iterator):
         self._pos += 1
         return val
 
+
 class TupleIterator(Iterator):
     def __init__(self, val):
         self._vals = val.value()
@@ -53,6 +54,7 @@ class FiniteIterator(Iterator):
     in the iterable at the time of creating the iterator.
     There is also `FiniteIterator` that waits for new elements to code.
     """
+
     def __init__(self, vals, ty):
         "ty: type of the constants of each value"
         self._const_ty = ty
@@ -79,7 +81,6 @@ class FiniteIterator(Iterator):
 
 
 class LazyIterator(Iterator):
-
     def __init__(self, vals, ty):
         "ty: type of the constants of each value"
         self._const_ty = ty

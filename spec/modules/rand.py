@@ -12,11 +12,18 @@ class UniformDistribution(Value):
         self.l = l
         self.h = h
 
-        self._method_get = Method("get", [], IntType(32), lambda s, p: Constant(randint(self.l, self.h), IntType(32)))
+        self._method_get = Method(
+            "get",
+            [],
+            IntType(32),
+            lambda s, p: Constant(randint(self.l, self.h), IntType(32)),
+        )
 
     def get_method(self, name):
-        if name == "get": return self._method_get
+        if name == "get":
+            return self._method_get
         raise NotImplementedError(f"Invalid method: {name}")
+
 
 def uniform(_, params):
     assert len(params) == 2, params
@@ -29,7 +36,8 @@ def uni(_, params):
     l, h = params
     return Constant(randint(l.value, h.value), IntType(32))
 
+
 METHODS = {
-    "uniform" : Method("uniform", [NumType(), NumType()], ObjectType(), uniform),
-    "uni" : Method("uniform", [IntType(32), IntType(32)], IntType(32), uni)
+    "uniform": Method("uniform", [NumType(), NumType()], ObjectType(), uniform),
+    "uni": Method("uniform", [IntType(32), IntType(32)], IntType(32), uni),
 }

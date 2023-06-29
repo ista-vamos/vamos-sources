@@ -3,7 +3,14 @@ from interpreter.method import Method
 from interpreter.value import Value, Trace
 from ir.constant import Constant
 from ir.ir import Event
-from ir.type import IterableType, StringType, OutputType, STRING_TYPE, ITERATOR_TYPE, ObjectType
+from ir.type import (
+    IterableType,
+    StringType,
+    OutputType,
+    STRING_TYPE,
+    ITERATOR_TYPE,
+    ObjectType,
+)
 
 
 class FileReader(Value):
@@ -21,7 +28,9 @@ class FileReader(Value):
 
     def get_method(self, name):
         if name == "lines":
-            return Method("lines", [], ITERATOR_TYPE, lambda state, params: self.lines())
+            return Method(
+                "lines", [], ITERATOR_TYPE, lambda state, params: self.lines()
+            )
 
         raise RuntimeError(f"Invalid method: {name}")
 

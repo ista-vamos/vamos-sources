@@ -10,12 +10,22 @@ from interpreter.typemethods import initialize_type_methods
 from interpreter.value import Iterable, Value, Trace, Tuple
 from ir.constant import Constant
 from ir.element import Identifier
-from ir.expr import MethodCall, New, IfExpr, CommandLineArgument, Expr, IsIn, TupleExpr, CompareExpr
+from ir.expr import (
+    MethodCall,
+    New,
+    IfExpr,
+    CommandLineArgument,
+    Expr,
+    IsIn,
+    TupleExpr,
+    CompareExpr,
+)
 from ir.ir import Let, Yield, StatementList, ForEach, Event, Continue, Break
 from ir.type import OutputType, STRING_TYPE, BOOL_TYPE
 
 CONTINUE = 2
 BREAK = 3
+
 
 class StdoutOutput(Value):
     def __init__(self):
@@ -110,7 +120,9 @@ class Interpreter:
         assert isinstance(method, Method), (name, method)
         if isinstance(name.lhs, Expr):
             # this method is a method of a type, we must pass the object as a parameter
-            return method.execute(self.state, list(map(self.eval, [name.lhs] + name.params)))
+            return method.execute(
+                self.state, list(map(self.eval, [name.lhs] + name.params))
+            )
         return method.execute(self.state, list(map(self.eval, name.params)))
 
     def eval_cmp(self, cmp):
@@ -128,7 +140,6 @@ class Interpreter:
         if cmp.comparison == "<=":
             return Constant(lhs <= rhs, BOOL_TYPE)
         raise NotImplementedError(f"Invalid cmp to eval: {cmp} : {type(cmp)}")
-
 
     def eval_expr(self, name):
         if isinstance(name, Constant):
@@ -150,14 +161,17 @@ class Interpreter:
         if isinstance(name, CommandLineArgument):
             n = int(name.num) - 1
             if n >= len(self.input.args):
-                raise RuntimeError(f"Asking for command line argument {n}, but there is no such argument: {self.input}")
+                raise RuntimeError(
+                    f"Asking for command line argument {n}, but there is no such argument: {self.input}"
+                )
             return Constant(self.input.args[n], STRING_TYPE)
 
         if isinstance(name, TupleExpr):
             return Tuple([self.eval(v) for v in name.values], name.type())
 
-        raise NotImplementedError(f"Invalid/unsupported expr to eval: {name} : {type(name)}")
-
+        raise NotImplementedError(
+            f"Invalid/unsupported expr to eval: {name} : {type(name)}"
+        )
 
     def eval(self, name):
         if isinstance(name, Expr):
@@ -184,8 +198,6 @@ class Interpreter:
             if c == lhs:
                 return Constant(True, BOOL_TYPE)
         return Constant(False, BOOL_TYPE)
-
-
 
     def StatementList(self, stmt):
         dbg("Handling StatementList")

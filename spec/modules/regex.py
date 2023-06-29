@@ -23,16 +23,27 @@ class ReMatch(Value):
 
     def get_method(self, name):
         if name == "matched":
-            return Method("regex.matched", [], BOOL_TYPE, lambda state, params: Constant(bool(self.matched), BoolType()))
+            return Method(
+                "regex.matched",
+                [],
+                BOOL_TYPE,
+                lambda state, params: Constant(bool(self.matched), BoolType()),
+            )
         if name == "get":
-            return Method("regex.get", [UIntType(64)], STRING_TYPE, lambda state, params: self.re_match_get(state, params))
+            return Method(
+                "regex.get",
+                [UIntType(64)],
+                STRING_TYPE,
+                lambda state, params: self.re_match_get(state, params),
+            )
         if name == "has":
-            return Method("regex.has",
-                          [UIntType(64)],
-                          STRING_TYPE,
-                          lambda state, params: Constant(
-                params[0].value <= self.matched.re.groups, BoolType()
-                )
+            return Method(
+                "regex.has",
+                [UIntType(64)],
+                STRING_TYPE,
+                lambda state, params: Constant(
+                    params[0].value <= self.matched.re.groups, BoolType()
+                ),
             )
         raise RuntimeError(f"Invalid method: {name}")
 
