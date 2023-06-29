@@ -162,7 +162,8 @@ class Interpreter:
             n = int(name.num) - 1
             if n >= len(self.input.args):
                 raise RuntimeError(
-                    f"Asking for command line argument {n}, but there is no such argument: {self.input}"
+                    f"Asking for command line argument {n}, "
+                    "but there is no such argument: {self.input}"
                 )
             return Constant(self.input.args[n], STRING_TYPE)
 
@@ -207,6 +208,7 @@ class Interpreter:
             if r is not None:
                 assert self.in_iteration()
                 return r
+        return None
 
     def IfExpr(self, stmt):
         dbg("Handling IfExpr")
@@ -228,6 +230,7 @@ class Interpreter:
                 self.state.leave_scope(stmt)
                 return r
         self.state.leave_scope(stmt)
+        return None
 
     def ForEach(self, stmt):
         execute = self.exec
@@ -252,7 +255,7 @@ class Interpreter:
 
                 if action == CONTINUE:
                     break
-                elif action == BREAK:
+                if action == BREAK:
                     self.state.leave_scope(stmt)
                     return
                 assert action is None, action

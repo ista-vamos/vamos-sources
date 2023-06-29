@@ -1,6 +1,7 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
+from ir.constant import Constant
 from ir.element import Identifier, Element
 from ir.expr import (
     BoolExpr,
@@ -13,7 +14,6 @@ from ir.expr import (
     IsIn,
     CompareExpr,
 )
-from ir.constant import Constant
 from ir.ir import (
     Event,
     Yield,
@@ -124,11 +124,6 @@ class ProcessAST(BaseTransformer):
     def boolexpr(self, items):
         assert len(items) == 1, items
         assert isinstance(items[0], BoolExpr), items
-        return items[0]
-
-    def expr(self, items):
-        assert len(items) == 1, items
-        assert isinstance(items[0], Expr), items
         return items[0]
 
     def _compare(self, comp, items):

@@ -132,7 +132,7 @@ class Continue(Statement):
         return ()
 
     def __repr__(self):
-        return f"Continue"
+        return "Continue"
 
 
 class Break(Statement):
@@ -141,7 +141,7 @@ class Break(Statement):
         return ()
 
     def __repr__(self):
-        return f"Break"
+        return "Break"
 
 
 class OutputDecl(Statement):

@@ -27,9 +27,6 @@ class Iterable(Value):
 
 
 class Tuple(Iterable):
-    def __init__(self, vals, ty):
-        super().__init__(vals, ty)
-
     def iterator(self):
         return TupleIterator(self)
 
