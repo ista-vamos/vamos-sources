@@ -333,7 +333,7 @@ def prnode(lvl, node, *args):
 
 
 def transform_ast(lark_ast):
-    print(lark_ast.pretty())
+    #print(lark_ast.pretty())
     base = ProcessAST()
     T = merge_transformers(
         base,
