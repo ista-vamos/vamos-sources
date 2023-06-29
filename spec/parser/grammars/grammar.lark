@@ -33,8 +33,15 @@ event: name ["(" params ")"]
 boolexpr.1: "true" | "false"
           | "!" boolexpr     -> not
           | expr "in" expr -> is_in
+          | compareexpr
           | "(" boolexpr ")"
 
+compareexpr:  expr "==" expr   -> eq
+            | expr "!=" expr   -> ne
+            | expr ">=" expr   -> ge
+            | expr "<=" expr   -> le
+            | expr "<" expr    -> lt
+            | expr ">" expr    -> gt
 
 expr: boolexpr | newexpr | methodcall | specarg | constant | name | "(" expr ")"
 

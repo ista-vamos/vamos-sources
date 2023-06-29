@@ -10,7 +10,7 @@ from interpreter.typemethods import initialize_type_methods
 from interpreter.value import Iterable, Value, Trace, Tuple
 from ir.constant import Constant
 from ir.element import Identifier
-from ir.expr import MethodCall, New, IfExpr, CommandLineArgument, Expr, IsIn, TupleExpr
+from ir.expr import MethodCall, New, IfExpr, CommandLineArgument, Expr, IsIn, TupleExpr, CompareExpr
 from ir.ir import Let, Yield, StatementList, ForEach, Event, Continue, Break
 from ir.type import OutputType, STRING_TYPE, BOOL_TYPE
 
@@ -113,18 +113,32 @@ class Interpreter:
             return method.execute(self.state, list(map(self.eval, [name.lhs] + name.params)))
         return method.execute(self.state, list(map(self.eval, name.params)))
 
-    def eval(self, name):
-        if isinstance(name, Identifier):
-            val = self.state.try_get(name.name)
-            if val is not None:
-                return val
-            raise NotImplementedError(f"Unbound identifier `{name}` : {type(name)}")
+    def eval_cmp(self, cmp):
+        lhs, rhs = self.eval(cmp.lhs), self.eval(cmp.rhs)
+        if cmp.comparison == "==":
+            return Constant(lhs == rhs, BOOL_TYPE)
+        if cmp.comparison == "!=":
+            return Constant(lhs != rhs, BOOL_TYPE)
+        if cmp.comparison == "<":
+            return Constant(lhs < rhs, BOOL_TYPE)
+        if cmp.comparison == ">":
+            return Constant(lhs > rhs, BOOL_TYPE)
+        if cmp.comparison == ">=":
+            return Constant(lhs >= rhs, BOOL_TYPE)
+        if cmp.comparison == "<=":
+            return Constant(lhs <= rhs, BOOL_TYPE)
+        raise NotImplementedError(f"Invalid cmp to eval: {cmp} : {type(cmp)}")
 
+
+    def eval_expr(self, name):
         if isinstance(name, Constant):
             return name
 
         if isinstance(name, MethodCall):
             return self.methodcall(name)
+
+        if isinstance(name, CompareExpr):
+            return self.eval_cmp(name)
 
         if isinstance(name, IsIn):
             return self.eval_is_in(name)
@@ -132,10 +146,6 @@ class Interpreter:
         if isinstance(name, New):
             out = None  # name.
             return Trace(name.objtype, out=(out or STDOUT_OUTPUT))
-
-        if isinstance(name, Event):
-            # evaluate the parameters in the event
-            return Event(name.name, [self.eval(p) for p in name.params or ()])
 
         if isinstance(name, CommandLineArgument):
             n = int(name.num) - 1
@@ -145,6 +155,23 @@ class Interpreter:
 
         if isinstance(name, TupleExpr):
             return Tuple([self.eval(v) for v in name.values], name.type())
+
+        raise NotImplementedError(f"Invalid/unsupported expr to eval: {name} : {type(name)}")
+
+
+    def eval(self, name):
+        if isinstance(name, Expr):
+            return self.eval_expr(name)
+
+        if isinstance(name, Identifier):
+            val = self.state.try_get(name.name)
+            if val is not None:
+                return val
+            raise NotImplementedError(f"Unbound identifier `{name}` : {type(name)}")
+
+        if isinstance(name, Event):
+            # evaluate the parameters in the event
+            return Event(name.name, [self.eval(p) for p in name.params or ()])
 
         raise NotImplementedError(f"Invalid parameter to eval: {name} : {type(name)}")
 

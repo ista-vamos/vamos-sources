@@ -10,7 +10,7 @@ from ir.expr import (
     MethodCall,
     IfExpr,
     TupleExpr,
-    IsIn,
+    IsIn, CompareExpr,
 )
 from ir.constant import Constant
 from ir.ir import (
@@ -60,51 +60,6 @@ class BaseTransformer(Transformer):
     def NAME(self, items):
         return Identifier(str(items.value))
 
-
-# class ProcessExpr(BaseTransformer):
-#     def const_or_var(self, items):
-#         if isinstance(items[0], (Identifier, Expr)):
-#             return items[0]
-#         raise NotImplementedError(str(items[0], type(items[0])))
-
-
-#     def eq(self, items):
-#         assert len(items) == 2, items
-#         return CompareExpr("==", items[0].children[0], items[1].children[0])
-#
-#     def ne(self, items):
-#         assert len(items) == 2, items
-#         return CompareExpr("!=", items[0].children[0], items[1].children[0])
-#
-#     def ge(self, items):
-#         assert len(items) == 2, items
-#         return CompareExpr(">=", items[0].children[0], items[1].children[0])
-#
-#     def gt(self, items):
-#         assert len(items) == 2, items
-#         return CompareExpr(">", items[0].children[0], items[1].children[0])
-#
-#     def land(self, items):
-#         if len(items) == 1:
-#             return items[0]
-#         return And(items[0], items[1])
-#
-#     def lor(self, items):
-#         if len(items) == 1:
-#             return items[0]
-#         return Or(items[0], items[1])
-#
-#     def constexpr(self, items):
-#         assert isinstance(items[0], ConstExpr), items
-#         return items[0]
-#
-#     def labelexpr(self, items):
-#         return Label(items[0])
-#
-#     def subwordexpr(self, items):
-#         return SubWord(items[0], items[1])
-
-
 class ProcessTypes(BaseTransformer):
     def simpletype(self, items):
         assert len(items) == 1, items
@@ -148,6 +103,11 @@ class ProcessEvents(BaseTransformer):
             decls.append(ev)
         return decls
 
+def identifier_or_expr(item):
+    if isinstance(item, Expr):
+        return item
+    assert item.data == "name"
+    return item.children[0]
 
 class ProcessAST(BaseTransformer):
     def __init__(self):
@@ -157,7 +117,6 @@ class ProcessAST(BaseTransformer):
         self.usertypes = {}
 
     def boolexpr(self, items):
-        return items
         assert len(items) == 1, items
         assert isinstance(items[0], BoolExpr), items
         return items[0]
@@ -166,6 +125,44 @@ class ProcessAST(BaseTransformer):
         assert len(items) == 1, items
         assert isinstance(items[0], Expr), items
         return items[0]
+
+    def _compare(self, comp, items):
+        assert len(items) == 2, items
+        return CompareExpr(comp,
+                           identifier_or_expr(items[0]),
+                           identifier_or_expr(items[1]))
+
+    def eq(self, items): return self._compare("==", items)
+    def ne(self, items): return self._compare("!=", items)
+    def le(self, items): return self._compare("<=", items)
+    def ge(self, items): return self._compare(">=", items)
+    def lt(self, items): return self._compare("<", items)
+    def gt(self, items): return self._compare(">", items)
+
+    def compareexpr(self, items):
+        assert len(items) == 1, items
+        return items[0]
+
+
+    #   def land(self, items):
+    #       if len(items) == 1:
+    #           return items[0]
+    #       return And(items[0], items[1])
+    #
+    #   def lor(self, items):
+    #       if len(items) == 1:
+    #           return items[0]
+    #       return Or(items[0], items[1])
+    #
+    #   def constexpr(self, items):
+    #       assert isinstance(items[0], ConstExpr), items
+    #       return items[0]
+    #
+    #   def labelexpr(self, items):
+    #       return Label(items[0])
+    #
+    #   def subwordexpr(self, items):
+    #       return SubWord(items[0], items[1])
 
     def is_in(self, items):
         lhs = items[0] if isinstance(items[0], Expr) else items[0].children[0]
@@ -333,7 +330,7 @@ def prnode(lvl, node, *args):
 
 
 def transform_ast(lark_ast):
-    #print(lark_ast.pretty())
+    print(lark_ast.pretty())
     base = ProcessAST()
     T = merge_transformers(
         base,
