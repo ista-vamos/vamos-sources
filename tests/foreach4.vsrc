@@ -1,0 +1,13 @@
+import common
+
+Event Num { x: Int32 }
+
+let t = new [Num];
+
+foreach n in common.range(1, 101) {
+  if n != 10 {
+    continue;
+  }
+  yield Num(n) to t;
+}
+
