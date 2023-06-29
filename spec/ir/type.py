@@ -1,4 +1,7 @@
+
 class Type:
+    methods = {}
+
     @property
     def children(self):
         raise NotImplementedError(f"Must be overriden for {self}")
@@ -6,9 +9,14 @@ class Type:
     def __eq__(self, other):
         return isinstance(other, type(self))
 
+    def get_method(self, name: str):
+        assert isinstance(name, str), name
+        return type(self).methods.get(name)
+
 
 class UserType(Type):
     def __init__(self, name):
+        super().__init__()
         self.name = name
 
     def __str__(self):
@@ -43,9 +51,11 @@ class BoolType(SimpleType):
     def __str__(self):
         return "Bool"
 
+BOOL_TYPE = BoolType()
 
 class NumType(SimpleType):
     def __init__(self, bitwidth=None):
+        super().__init__()
         assert bitwidth is None or bitwidth in (8, 16, 32, 64), bitwidth
         self.bitwidth = bitwidth
 
@@ -81,6 +91,15 @@ class IterableType(Type):
     def children(self):
         return ()
 
+ITERABLE_TYPE = IterableType()
+
+class IteratorType(Type):
+    @property
+    def children(self):
+        return ()
+
+ITERATOR_TYPE = IteratorType()
+
 
 class OutputType(Type):
     """
@@ -94,6 +113,7 @@ class OutputType(Type):
 
 class TraceType(IterableType):
     def __init__(self, subtypes):
+        super().__init__()
         self.subtypes = set(subtypes)
 
     def __str__(self):
@@ -109,6 +129,7 @@ class TraceType(IterableType):
 
 class HypertraceType(IterableType):
     def __init__(self, subtypes, bounded=True):
+        super().__init__()
         assert all(
             map(lambda ty: isinstance(ty, (TraceType, UserType)), subtypes)
         ), subtypes
@@ -171,6 +192,7 @@ def type_from_token(token):
 
 class TupleType(IterableType):
     def __init__(self, elems_tys):
+        super().__init__()
         self.subtypes = elems_tys
 
     def __repr__(self):
@@ -178,8 +200,16 @@ class TupleType(IterableType):
 
 
 class StringType(IterableType):
+
+    methods = {}
+
+    def __init__(self):
+        super().__init__()
+
+
     def __repr__(self):
         return "StringTy"
+
 
     @property
     def children(self):
@@ -187,3 +217,13 @@ class StringType(IterableType):
 
 
 STRING_TYPE = StringType()
+
+class ObjectType(Type):
+    def __repr__(self):
+        return "ObjectTy"
+
+    @property
+    def children(self):
+        return ()
+
+OBJECT_TYPE = ObjectType()

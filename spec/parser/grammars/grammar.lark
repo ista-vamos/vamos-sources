@@ -28,19 +28,32 @@ eventseq: event+
 tracename: NAME
 event: name ["(" params ")"]
 
-expr: newexpr | boolexpr | methodcall | specarg | constant
+
+// FIXME
+boolexpr.1: "true" | "false"
+          | "!" boolexpr     -> not
+          | expr "in" expr -> is_in
+          | "(" boolexpr ")"
+
+
+expr: boolexpr | newexpr | methodcall | specarg | constant | name | "(" expr ")"
+
 specarg: "$" NUMBER
 iterable: name | methodcall
 
 newexpr: "new" type
-methodcall: name "." name "(" [params] ")"
+methodcall: (name | expr) "." name "(" [params] ")"
 params: (name | expr) ("," (name | expr))*
+
+constant: NUMBER -> constant_number
+         | ESCAPED_STRING -> constant_string
+         | constant_tuple
+tuple: "(" expr ("," expr)+  ")"
+constant_tuple: "(" constant ("," constant)+  ")"
 value: NAME
 
 //%import types.typeannot
 %import types.type
-%import expr.boolexpr
-%import expr.constant
 %import events.eventdecl_imp -> eventdecl
 %import comm.name
 

@@ -2,6 +2,8 @@ import file
 import regex
 import dbg
 
+Event Input, Output { x: UInt32 }
+
 let t0 = new [Input];
 let t1 = new [Output];
 

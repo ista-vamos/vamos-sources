@@ -3,7 +3,6 @@ from lark.visitors import merge_transformers
 
 from ir.element import Identifier, Element
 from ir.expr import (
-    Constant,
     BoolExpr,
     New,
     CommandLineArgument,
@@ -13,6 +12,7 @@ from ir.expr import (
     TupleExpr,
     IsIn,
 )
+from ir.constant import Constant
 from ir.ir import (
     Event,
     Yield,
@@ -61,14 +61,11 @@ class BaseTransformer(Transformer):
         return Identifier(str(items.value))
 
 
-class ProcessExpr(BaseTransformer):
-    def const_or_var(self, items):
-        if isinstance(items[0], (Identifier, Expr)):
-            return items[0]
-        raise NotImplementedError(str(items[0], type(items[0])))
-
-    def is_in(self, items):
-        return IsIn(items[0], items[1])
+# class ProcessExpr(BaseTransformer):
+#     def const_or_var(self, items):
+#         if isinstance(items[0], (Identifier, Expr)):
+#             return items[0]
+#         raise NotImplementedError(str(items[0], type(items[0])))
 
 
 #     def eq(self, items):
@@ -160,15 +157,33 @@ class ProcessAST(BaseTransformer):
         self.usertypes = {}
 
     def boolexpr(self, items):
+        return items
         assert len(items) == 1, items
-        assert isinstance(items[0], BoolExpr)
+        assert isinstance(items[0], BoolExpr), items
         return items[0]
+
+    def expr(self, items):
+        assert len(items) == 1, items
+        assert isinstance(items[0], Expr), items
+        return items[0]
+
+    def is_in(self, items):
+        lhs = items[0] if isinstance(items[0], Expr) else items[0].children[0]
+        assert isinstance(lhs, (Expr, Identifier)), lhs
+
+        rhs = items[1] if isinstance(items[1], Expr) else items[1].children[0]
+        assert isinstance(rhs, (Expr, Identifier)), rhs
+        return IsIn(lhs, rhs)
+
 
     def newexpr(self, items):
         return New(items[0])
 
     def methodcall(self, items):
-        module = items[0].children[0]
+        lhs = items[0]
+        if not isinstance(lhs, Expr):
+            assert items[0].data == "name", items[0]
+            lhs = items[0].children[0]
         method = items[1].children[0]
         params = []
         for item in items[2] or ():
@@ -177,11 +192,14 @@ class ProcessAST(BaseTransformer):
             else:
                 assert item.data == "name", item
                 params.append(item.children[0])
-        return MethodCall(module, method, params)
+        return MethodCall(lhs, method, params)
 
 
     def expr(self, items):
-        assert isinstance(items[0], Expr), items
+        if isinstance(items[0], Expr):
+            return items[0]
+        assert items[0].data == "name", items
+        # this is an identifier
         return items[0]
 
     def start(self, items):
@@ -315,13 +333,14 @@ def prnode(lvl, node, *args):
 
 
 def transform_ast(lark_ast):
+    print(lark_ast.pretty())
     base = ProcessAST()
     T = merge_transformers(
         base,
         comm=BaseTransformer(),
         events=merge_transformers(ProcessEvents(), comm=BaseTransformer(), types=ProcessTypes()),
         types=ProcessTypes(),
-        expr=ProcessExpr(),
+        #expr=ProcessExpr(),
     )
     ast = T.transform(lark_ast)
 

@@ -1,14 +1,16 @@
-from interpreter.value import Value, FiniteIterator, Trace
-from ir.expr import Constant
+from interpreter.iterators import FiniteIterator
+from interpreter.method import Method
+from interpreter.value import Value, Trace
+from ir.constant import Constant
 from ir.ir import Event
-from ir.type import IterableType, StringType, OutputType, STRING_TYPE
+from ir.type import IterableType, StringType, OutputType, STRING_TYPE, ITERATOR_TYPE, ObjectType
 
 
 class FileReader(Value):
     def __init__(self, fl: Constant):
         super().__init__("<FileReader>", IterableType())
         assert isinstance(fl, Constant), fl
-        assert fl.type == STRING_TYPE, fl
+        assert fl.type() == STRING_TYPE, fl
 
         self.file = fl.value
         self.fobj = open(self.file, "r")
@@ -19,7 +21,7 @@ class FileReader(Value):
 
     def get_method(self, name):
         if name == "lines":
-            return lambda state, params: self.lines()
+            return Method("lines", [], ITERATOR_TYPE, lambda state, params: self.lines())
 
         raise RuntimeError(f"Invalid method: {name}")
 
@@ -68,4 +70,7 @@ def writer(_, params):
     return FileWriter(params[0])
 
 
-METHODS = {"reader": reader, "writer": writer}
+METHODS = {
+    "reader": Method("file.reader", [STRING_TYPE], ObjectType(), reader),
+    "writer": Method("file.writer", [STRING_TYPE], ObjectType(), writer),
+}

@@ -2,13 +2,20 @@ import sys
 from os import readlink
 from os.path import abspath, dirname, islink
 
+from interpreter.iterators import ListIterator, Iterator
+from interpreter.method import Method
 from interpreter.module import Module
-from interpreter.value import Iterable, Value, Trace, ListIterator, Iterator
+from interpreter.state import State
+from interpreter.typemethods import initialize_type_methods
+from interpreter.value import Iterable, Value, Trace, Tuple
+from ir.constant import Constant
 from ir.element import Identifier
-from ir.expr import MethodCall, New, Constant, IfExpr, CommandLineArgument
-from ir.ir import Let, Yield, StatementList, ForEach, Event, OutputDecl
-from ir.type import OutputType
+from ir.expr import MethodCall, New, IfExpr, CommandLineArgument, Expr, IsIn, TupleExpr
+from ir.ir import Let, Yield, StatementList, ForEach, Event, Continue, Break
+from ir.type import OutputType, STRING_TYPE, BOOL_TYPE
 
+CONTINUE = 2
+BREAK = 3
 
 class StdoutOutput(Value):
     def __init__(self):
@@ -23,7 +30,7 @@ class StdoutOutput(Value):
             end="",
         )
         print(", " if event.params else "", end="")
-        print(", ".join(map(lambda p: p.value, event.params)))
+        print(", ".join(map(lambda p: str(p.value), event.params)))
 
 
 STDOUT_OUTPUT = StdoutOutput()
@@ -33,29 +40,6 @@ def dbg(msg, *args, **kwargs):
     return
     print("[dbg] ", end="")
     print(msg, *args, file=sys.stderr, **kwargs)
-
-
-class State:
-    def __init__(self):
-        self.values = {}
-        self.next_instr = {}
-
-    def bind(self, name, val):
-        assert isinstance(name, str), (name, type(name))
-        assert isinstance(val, (Value, Constant)), val
-        self.values[name] = val
-
-    def get(self, name):
-        return self.values[name]
-
-    def try_get(self, name):
-        return self.values.get(name)
-
-    def __repr__(self):
-        return f"""
--- values --
-{self.values}
-"""
 
 
 class Interpreter:
@@ -73,9 +57,12 @@ class Interpreter:
             StatementList: self.StatementList,
             ForEach: self.ForEach,
             IfExpr: self.IfExpr,
-            OutputDecl: self.OutputDecl,
             MethodCall: self.methodcall,
+            Continue: self.Continue,
+            Break: self.Break,
         }
+
+        initialize_type_methods()
 
         self.executed_stmts = 0
 
@@ -102,7 +89,11 @@ class Interpreter:
 
     def get_method(self, name):
         method = None
-        obj = self.state.try_get(name.lhs.name)
+        if isinstance(name.lhs, Expr):
+            obj = name.lhs.type()
+        else:
+            obj = self.state.try_get(name.lhs.name)
+
         if obj:
             method = obj.get_method(name.rhs.name)
         return method
@@ -115,19 +106,28 @@ class Interpreter:
         method = self.get_method(name)
         if method is None:
             raise RuntimeError(f"Unknown method: `{name.lhs.name}.{name.rhs.name}`")
-        return method(self.state, list(map(self.eval, name.params)))
+
+        assert isinstance(method, Method), (name, method)
+        if isinstance(name.lhs, Expr):
+            # this method is a method of a type, we must pass the object as a parameter
+            return method.execute(self.state, list(map(self.eval, [name.lhs] + name.params)))
+        return method.execute(self.state, list(map(self.eval, name.params)))
 
     def eval(self, name):
         if isinstance(name, Identifier):
             val = self.state.try_get(name.name)
             if val is not None:
                 return val
+            raise NotImplementedError(f"Unbound identifier `{name}` : {type(name)}")
 
         if isinstance(name, Constant):
             return name
 
         if isinstance(name, MethodCall):
             return self.methodcall(name)
+
+        if isinstance(name, IsIn):
+            return self.eval_is_in(name)
 
         if isinstance(name, New):
             out = None  # name.
@@ -141,21 +141,33 @@ class Interpreter:
             n = int(name.num) - 1
             if n >= len(self.input.args):
                 raise RuntimeError(f"Asking for command line argument {n}, but there is no such argument: {self.input}")
-            return self.input.args[n]
+            return Constant(self.input.args[n], STRING_TYPE)
 
-        raise NotImplementedError(f"Invalid name: {name}")
+        if isinstance(name, TupleExpr):
+            return Tuple([self.eval(v) for v in name.values], name.type())
 
-    def OutputDecl(self, stmt):
-        raise NotImplementedError("Not implemented yet")
-        trace = self.eval(stmt.trace)
-        out = self.eval(stmt.out)
-        print(trace, out)
+        raise NotImplementedError(f"Invalid parameter to eval: {name} : {type(name)}")
+
+    def eval_is_in(self, expr):
+        lhs = self.eval(expr.lhs)
+        iterable = self.eval(expr.rhs)
+        iterator = iterable.iterator()
+        while iterator.has_next():
+            c = iterator.next()
+            if c == lhs:
+                return Constant(True, BOOL_TYPE)
+        return Constant(False, BOOL_TYPE)
+
+
 
     def StatementList(self, stmt):
         dbg("Handling StatementList")
         execute = self.exec
         for s in stmt:
-            execute(s)
+            r = execute(s)
+            if r is not None:
+                assert self.in_iteration()
+                return r
 
     def IfExpr(self, stmt):
         dbg("Handling IfExpr")
@@ -169,11 +181,16 @@ class Interpreter:
         else:
             raise RuntimeError(f"Invalid evaluated condition: {cond}")
 
+        self.state.enter_scope(stmt)
         for s in stmts:
-            execute(s)
+            r = execute(s)
+            if r is not None:
+                assert self.in_iteration(), self.state
+                self.state.leave_scope(stmt)
+                return r
+        self.state.leave_scope(stmt)
 
     def ForEach(self, stmt):
-        dbg("Handling ForEach")
         execute = self.exec
         # has next element?
         rhs = self.eval(stmt.iterable)
@@ -183,13 +200,35 @@ class Interpreter:
             iterable = rhs
         else:
             raise NotImplementedError(rhs)
-        assert isinstance(iterable, Iterable)
-        while iterable.has_next():
-            self.bind_name(stmt.value.name, iterable.next())
+        assert isinstance(iterable, (Iterable, Iterator)), iterable
+        iterator = iterable.iterator()
+
+        self.state.enter_scope(stmt)
+        while iterator.has_next():
+            self.bind_name(stmt.value.name, iterator.next())
 
             # if so, evaluate statements
             for s in stmt:
-                execute(s)
+                action = execute(s)
+
+                if action == CONTINUE:
+                    break
+                elif action == BREAK:
+                    self.state.leave_scope(stmt)
+                    return
+                assert action is None, action
+        self.state.leave_scope(stmt)
+
+    def Continue(self, _):
+        assert self.in_iteration(), self.state.scopes()
+        return CONTINUE
+
+    def Break(self, _):
+        assert self.in_iteration(), self.state.scopes()
+        return BREAK
+
+    def in_iteration(self):
+        return any((isinstance(s, ForEach) for s in self.state.scopes()))
 
     def Let(self, stmt):
         obj = self.eval(stmt.obj)
@@ -197,7 +236,6 @@ class Interpreter:
         dbg(f"Let {stmt.name.name} = {obj}")
 
     def Yield(self, stmt):
-        dbg("Handling Yield")
         # stmt.events
         seval = self.eval
         trace = seval(stmt.trace)
@@ -215,9 +253,12 @@ class Interpreter:
         print("[Interpreter] running on program")
         execute = self.exec
         for stmt in self.program:
-            execute(stmt)
+            r = execute(stmt)
+            if r is not None:
+                assert self.in_iteration(), self.state
+                return r
 
     def exec(self, stmt):
         dbg(f"{self.executed_stmts}: {stmt}")
-        self.handlers[type(stmt)](stmt)
         self.executed_stmts += 1
+        return self.handlers[type(stmt)](stmt)

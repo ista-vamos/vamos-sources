@@ -1,5 +1,5 @@
 from ir.element import Element
-from ir.type import BoolType
+from ir.type import BoolType, STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
 
 
 class Expr(Element):
@@ -8,31 +8,10 @@ class Expr(Element):
     """
 
 
-class Constant(Expr):
-    def __init__(self, c, ty=None):
-        super().__init__()
-        self.value = c
-        self.type = ty
-
-    def pretty_str(self):
-        return f"{self.value} : {self.type or ''}"
-
-    def __str__(self):
-        return f"CONST({self.value} : {self.type or ''})"
-
-    def __repr__(self):
-        return f"Constant({self.value} : {self.type or ''})"
-
-    @property
-    def children(self):
-        return ()
-
-
 class TupleExpr(Expr):
     def __init__(self, vals, ty):
-        super().__init__()
+        super().__init__(ty)
         self.values = vals
-        self.type = ty
 
     def __repr__(self):
         return f"TupleExpr({','.join(map(str, self.values))})"
@@ -64,7 +43,7 @@ class CommandLineArgument(Expr):
     """
 
     def __init__(self, n):
-        super().__init__()
+        super().__init__(STRING_TYPE)
         self.num = n
 
     def __repr__(self):
@@ -77,8 +56,7 @@ class CommandLineArgument(Expr):
 
 class BoolExpr(Expr):
     def __init__(self):
-        super().__init__()
-        self.type = BoolType
+        super().__init__(BOOL_TYPE)
 
     @property
     def children(self):
@@ -155,9 +133,6 @@ class IsIn(BoolExpr):
     def pretty_str(self):
         return f"{self.lhs.pretty_str()} in {self.rhs.pretty_str()}"
 
-    def __str__(self):
-        return f"{self.lhs} in {self.rhs}"
-
     def __repr__(self):
         return f"IsIn({self.lhs}, {self.rhs})"
 
@@ -168,7 +143,7 @@ class IsIn(BoolExpr):
 
 class New(Expr):
     def __init__(self, ty):
-        super().__init__()
+        super().__init__(OBJECT_TYPE)
 
         assert ty is not None
         self.objtype = ty
@@ -185,8 +160,9 @@ class IfExpr(Expr):
     "if `cond` { `true_stmts` } [else { `false_stmts` }]"
 
     def __init__(self, cond, true_stmts, false_stmts=None):
-        super().__init__(BoolType())
+        super().__init__(None)
         assert isinstance(cond, Expr), cond
+        #assert isinstance(cond.type(), BoolType), cond
         self.cond = cond
         self.true_stmts = true_stmts
         self.false_stmts = false_stmts
@@ -201,7 +177,7 @@ class IfExpr(Expr):
 
 class MethodCall(Expr):
     def __init__(self, lhs, rhs, params):
-        super().__init__()
+        super().__init__(None)
         self.lhs = lhs
         self.rhs = rhs
         self.params = params

@@ -1,4 +1,4 @@
-from ir.expr import Constant
+from ir.constant import Constant
 from ir.type import STRING_TYPE
 
 

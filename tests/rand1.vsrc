@@ -1,5 +1,6 @@
 import rand
 import common
+import dbg
 
 Event Input, Output {
   x: Int32,
@@ -13,9 +14,10 @@ let t = new [Input, Output, Dummy];
 -- we could use also rand.coin()
 let U = rand.uniform(0, 1);
 
-foreach n in common.range(0, $1) {
+foreach n in common.range(0, ($1).as("Int32")) {
+  -- dbg.dbg(n);
   let x = rand.uni(0, 100);
-  if x in (0, 9) {
+  if x in common.range(0, 9) {
     --yield Input(pick from U) to t;
     yield Input(U.get()) to t;
     continue;
