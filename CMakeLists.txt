@@ -72,3 +72,27 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 enable_testing()
 add_subdirectory(tests)
 
+#install(EXPORT vamos-sources_Export
+#        FILE vamos-sources.cmake
+#        DESTINATION lib/cmake/vamos-sources.cmake)
+#export(EXPORT vamos-sources_Export FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/vamos-sources/vamos-sources.cmake)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/vamos-sources/vamos-sources-config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/cmake/vamos-sources/vamos-sources-config.cmake"
+  INSTALL_DESTINATION "lib/cmake/vamos-sources"
+  NO_SET_AND_CHECK_MACRO
+  NO_CHECK_REQUIRED_COMPONENTS_MACRO
+  )
+
+write_basic_package_version_file(
+    "vamos-sources-version.cmake"
+    VERSION ${vamos-sources_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/cmake/vamos-sources/vamos-sources-config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/cmake/vamos-sources/vamos-sources-version.cmake"
+  DESTINATION lib/cmake/vamos-sources)

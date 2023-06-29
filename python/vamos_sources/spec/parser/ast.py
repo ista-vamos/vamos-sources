@@ -1,9 +1,9 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
-from ir.constant import Constant
-from ir.element import Identifier, Element
-from ir.expr import (
+from .. ir.constant import Constant
+from .. ir.element import Identifier, Element
+from .. ir.expr import (
     BoolExpr,
     New,
     CommandLineArgument,
@@ -14,7 +14,7 @@ from ir.expr import (
     IsIn,
     CompareExpr,
 )
-from ir.ir import (
+from .. ir.ir import (
     Event,
     Yield,
     Statement,
@@ -27,7 +27,7 @@ from ir.ir import (
     Continue,
     Break,
 )
-from ir.type import (
+from .. ir.type import (
     NumType,
     type_from_token,
     UserType,
@@ -37,7 +37,7 @@ from ir.type import (
     StringType,
     TupleType,
 )
-from parser.decls import DataField, EventDecl
+from .decls import DataField, EventDecl
 
 
 class BaseTransformer(Transformer):

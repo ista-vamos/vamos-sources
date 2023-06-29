@@ -1,4 +1,4 @@
-from ir.expr import Expr
+from .. ir.expr import Expr
 
 
 class Constant(Expr):

@@ -9,7 +9,7 @@ from interpreter.interpreter import Interpreter
 from parser.parser import Parser
 
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
-sys.path.insert(0, abspath(f"{self_path}/.."))
+sys.path.insert(0, abspath(f"{self_path}/../.."))
 
 
 def interpret(program, inp, cmdargs):

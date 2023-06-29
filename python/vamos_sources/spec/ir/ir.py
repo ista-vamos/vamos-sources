@@ -1,5 +1,5 @@
-from ir.element import Element
-from ir.type import EventType
+from .. ir.element import Element
+from .. ir.type import EventType
 
 
 class Program(Element):
