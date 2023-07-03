@@ -1,10 +1,10 @@
 from random import randint
 
-from interpreter import Method
-from interpreter import Value
-from ..ir.expr import MethodCall
-from ..ir.constant import Constant
-from ..ir.type import IntType, NumType, ObjectType
+from vamos_sources.interpreter.method import Method
+from vamos_sources.interpreter.value import Value
+from vamos_sources.spec.ir.expr import MethodCall
+from vamos_sources.spec.ir.constant import Constant
+from vamos_sources.spec.ir.type import IntType, NumType, ObjectType
 
 
 class UniformDistribution(Value):

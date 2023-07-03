@@ -10,5 +10,5 @@ set( vamos-sources_INSTALL_PREFIX @CMAKE_INSTALL_PREFIX@ )
 set( vamos-sources_OPTION_ENABLE_IPO @ENABLE_IPO@ )
 set( vamos-sources_PYTHONPATH "@vamos-sources_SOURCE_DIR@/python" )
 
-include ( "${CMAKE_CURRENT_LIST_DIR}/vamos-sources.cmake" )
+#include ( "${CMAKE_CURRENT_LIST_DIR}/vamos-sources.cmake" )
 
