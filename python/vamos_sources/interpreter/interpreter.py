@@ -8,9 +8,9 @@ from .module import Module
 from .state import State
 from .typemethods import initialize_type_methods
 from .value import Iterable, Value, Trace, Tuple
-from .. ir.constant import Constant
-from .. ir.element import Identifier
-from .. ir.expr import (
+from vamos_sources.spec.ir.constant import Constant
+from vamos_sources.spec.ir.element import Identifier
+from vamos_sources.spec.ir.expr import (
     MethodCall,
     New,
     IfExpr,
@@ -20,8 +20,16 @@ from .. ir.expr import (
     TupleExpr,
     CompareExpr,
 )
-from .. ir.ir import Let, Yield, StatementList, ForEach, Event, Continue, Break
-from .. ir.type import OutputType, STRING_TYPE, BOOL_TYPE
+from vamos_sources.spec.ir.ir import (
+    Let,
+    Yield,
+    StatementList,
+    ForEach,
+    Event,
+    Continue,
+    Break,
+)
+from vamos_sources.spec.ir.type import OutputType, STRING_TYPE, BOOL_TYPE
 
 CONTINUE = 2
 BREAK = 3

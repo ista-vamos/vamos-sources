@@ -2,9 +2,9 @@ from lark import Transformer
 from lark.visitors import merge_transformers
 
 from .context import Context
-from .. ir.constant import Constant
-from .. ir.element import Identifier, Element
-from .. ir.expr import (
+from ..ir.constant import Constant
+from ..ir.element import Identifier, Element
+from ..ir.expr import (
     BoolExpr,
     New,
     CommandLineArgument,
@@ -15,7 +15,7 @@ from .. ir.expr import (
     IsIn,
     CompareExpr,
 )
-from .. ir.ir import (
+from ..ir.ir import (
     Event,
     Yield,
     Statement,
@@ -28,7 +28,7 @@ from .. ir.ir import (
     Continue,
     Break,
 )
-from .. ir.type import (
+from ..ir.type import (
     NumType,
     type_from_token,
     UserType,
@@ -347,7 +347,7 @@ def prnode(lvl, node, *args):
 
 
 def transform_ast(lark_ast, ctx=None):
-    #print(lark_ast.pretty())
+    # print(lark_ast.pretty())
     base = ProcessAST(ctx)
     T = merge_transformers(
         base,

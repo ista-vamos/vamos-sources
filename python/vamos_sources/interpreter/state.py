@@ -1,5 +1,5 @@
-from interpreter.value import Value
-from ir.constant import Constant
+from .value import Value
+from vamos_sources.spec.ir.constant import Constant
 
 
 class State:

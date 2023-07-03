@@ -1,5 +1,5 @@
-from .. ir.element import Element
-from .. ir.type import BoolType, STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
+from ..ir.element import Element
+from ..ir.type import BoolType, STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
 
 
 class Expr(Element):

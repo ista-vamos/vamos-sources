@@ -1,9 +1,15 @@
 from re import match as re_match, search as re_search
 
-from interpreter.method import Method
-from interpreter.value import Value
-from ir.constant import Constant
-from ir.type import BoolType, BOOL_TYPE, STRING_TYPE, UIntType, ObjectType
+from vamos_sources.interpreter.method import Method
+from vamos_sources.interpreter.value import Value
+from vamos_sources.spec.ir.constant import Constant
+from vamos_sources.spec.ir.type import (
+    BoolType,
+    BOOL_TYPE,
+    STRING_TYPE,
+    UIntType,
+    ObjectType,
+)
 
 
 class ReMatch(Value):

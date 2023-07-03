@@ -1,5 +1,6 @@
+from vamos_sources.spec.ir.type import IterableType
+
 from .iterators import TupleIterator
-from .. ir.type import IterableType
 
 
 class Value:

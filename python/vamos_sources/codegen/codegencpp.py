@@ -2,7 +2,7 @@ import sys
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
 
-from . codegen import CodeGen
+from .codegen import CodeGen
 from ..spec.ir.element import Identifier
 from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Event, Continue, Break
 from ..spec.ir.expr import Expr, MethodCall, IfExpr, New, IsIn
@@ -31,18 +31,18 @@ class CodeGenCpp(CodeGen):
 
         sys.path.pop(0)
 
-
     def _copy_common_files(self):
         pass
-       #files = ["monitor.h", "mstring.h", "trace.h", "inputs.h",
-       #         "workbag.h", "cfgset.h", "cfg.h", "prefixexpr.h",
-       #         "main.cpp", "mstring.cpp", "subword-compare.h"]
-       #for f in files:
-       #    if f not in self.args.overwrite_default:
-       #        self.copy_file(f)
 
-       #for f in self.args.cpp_files:
-       #    self.copy_file(f)
+    # files = ["monitor.h", "mstring.h", "trace.h", "inputs.h",
+    #         "workbag.h", "cfgset.h", "cfg.h", "prefixexpr.h",
+    #         "main.cpp", "mstring.cpp", "subword-compare.h"]
+    # for f in files:
+    #    if f not in self.args.overwrite_default:
+    #        self.copy_file(f)
+
+    # for f in self.args.cpp_files:
+    #    self.copy_file(f)
 
     def _gen_input_stream_class(self, ast, wr):
         wr("class InputStream {\n")
@@ -56,8 +56,8 @@ class CodeGenCpp(CodeGen):
 
     def _gen_let(self, stmt, wr):
         wr(f"auto {stmt.name.name} = ")
-        #self._gen(stmt.name, wr)
-        #wr(" = ")
+        # self._gen(stmt.name, wr)
+        # wr(" = ")
         self._gen(stmt.obj, wr)
         wr(";\n")
 
@@ -99,7 +99,7 @@ class CodeGenCpp(CodeGen):
                     wr(", ")
                 self._gen(p, wr)
             wr(")")
-            #raise NotImplementedError(f"Unhandled method call: {stmt}")
+            # raise NotImplementedError(f"Unhandled method call: {stmt}")
 
     def _gen_if(self, stmt, wr):
         wr(f"if (")
@@ -162,9 +162,9 @@ class CodeGenCpp(CodeGen):
         elif isinstance(stmt, Statement):
             self._gen_stmt(stmt, wr)
         else:
-            raise NotImplementedError(f"Codegen not implemented for {stmt} : {type(stmt)}")
-
-
+            raise NotImplementedError(
+                f"Codegen not implemented for {stmt} : {type(stmt)}"
+            )
 
     def _gen_src(self, ast, wr):
         """
@@ -172,6 +172,7 @@ class CodeGenCpp(CodeGen):
         and it will generate data into shared structures read by another thread
         that feeds data into monitor or some other channel
         """
+
         def wr_ind(msg):
             wr("  ")
             wr(msg)
@@ -202,4 +203,3 @@ class CodeGenCpp(CodeGen):
             wr('#include "events.h"\n\n')
             self._gen_input_stream_class(ast, wr)
             self._gen_inputs_class(ast, wr)
-

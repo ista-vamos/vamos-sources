@@ -1,7 +1,7 @@
-from .. interpreter.iterators import FiniteIterator
-from .. interpreter.method import Method
-from .. ir.type import IntType, NumType, ITERATOR_TYPE
-from .. ir.expr import MethodCall
+from vamos_sources.interpreter.iterators import FiniteIterator
+from vamos_sources.interpreter.method import Method
+from vamos_sources.spec.ir.type import IntType, NumType, ITERATOR_TYPE
+from vamos_sources.spec.ir.expr import MethodCall
 
 
 def range_m(_, params):
@@ -11,6 +11,7 @@ def range_m(_, params):
 
 
 METHODS = {"range": Method("range", [NumType(), NumType()], ITERATOR_TYPE, range_m)}
+
 
 def gen(lang, stmt, wr, declarations):
     """

@@ -5,11 +5,11 @@ from multiprocessing import Process
 from os import readlink
 from os.path import islink, dirname, abspath
 
-from interpreter.interpreter import Interpreter
-from parser.parser import Parser
-
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
 sys.path.insert(0, abspath(f"{self_path}/../.."))
+
+from vamos_sources.interpreter.interpreter import Interpreter
+from vamos_sources.spec.parser.parser import Parser
 
 
 def interpret(program, inp, cmdargs):

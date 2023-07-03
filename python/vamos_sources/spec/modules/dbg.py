@@ -1,6 +1,6 @@
 from sys import stderr
 
-from .. interpreter.method import Method
+from vamos_sources.interpreter.method import Method
 
 
 def dbg(_, params):

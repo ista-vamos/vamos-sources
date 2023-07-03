@@ -12,13 +12,13 @@ grammars_dir = f"{grammars_dir}/grammars"
 
 
 class LarkParser:
-    def __init__(self, debug=False, start='start'):
+    def __init__(self, debug=False, start="start"):
         self._parser = Lark.open(
             "grammars/grammar.lark",
             rel_to=__file__,
             import_paths=[grammars_dir],
             debug=debug,
-            start=start
+            start=start,
         )
         if debug:
             logger.setLevel(logging.DEBUG)
@@ -48,9 +48,10 @@ class InlineSpecParser(LarkParser):
     """
     Parser for inlined or partial specifications
     """
+
     def __init__(self, ctx=None, debug=False):
         super().__init__(debug, start="inlined")
-        self.ctx=ctx
+        self.ctx = ctx
 
     def parse_file(self, f):
         return transform_ast(super().parse_file(f), self.ctx)

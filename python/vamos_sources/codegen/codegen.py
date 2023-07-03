@@ -3,7 +3,7 @@ from os.path import join as pathjoin, abspath
 from shutil import rmtree, copy as shutilcopy
 from sys import stderr
 
-from .. spec.ir.type import Type, BoolType, IntType, UIntType
+from ..spec.ir.type import Type, BoolType, IntType, UIntType
 
 
 class CodeMapper:
@@ -28,7 +28,7 @@ class CodeGen:
         else:
             self.codemapper = codemapper
 
-        self.args  = args
+        self.args = args
         self.files = []
         self.out_dir = abspath(args.out_dir)
         self.templates_path = None
@@ -60,7 +60,6 @@ class CodeGen:
         filename = pathjoin(self.out_dir, "dbg/", name)
         return open(filename, "w")
 
-
     def gen_config(self, infile, outfile, values):
         if outfile in self.args.overwrite_default:
             return
@@ -82,4 +81,3 @@ class CodeGen:
             write = stream.write
             for line in infl:
                 write(line)
-

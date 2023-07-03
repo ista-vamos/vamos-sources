@@ -1,4 +1,4 @@
-from interpreter.value import Value
+from .value import Value
 
 
 class Module(Value):

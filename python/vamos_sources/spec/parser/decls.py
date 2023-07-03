@@ -1,5 +1,5 @@
-from .. ir.element import Element
-from .. ir.type import SimpleType, BoolType
+from ..ir.element import Element
+from ..ir.type import SimpleType, BoolType
 
 
 class Decl(Element):

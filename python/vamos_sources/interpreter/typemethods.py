@@ -1,6 +1,12 @@
-from interpreter.method import Method
-from ir.constant import Constant
-from ir.type import StringType, type_from_token, NumType, STRING_TYPE, Type
+from .method import Method
+from vamos_sources.spec.ir.constant import Constant
+from vamos_sources.spec.ir.type import (
+    StringType,
+    type_from_token,
+    NumType,
+    STRING_TYPE,
+    Type,
+)
 
 
 def string_as(_, params):

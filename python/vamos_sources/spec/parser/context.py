@@ -1,4 +1,4 @@
-from .. ir.element import Identifier
+from ..ir.element import Identifier
 
 
 class Context:

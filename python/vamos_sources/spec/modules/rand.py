@@ -1,10 +1,10 @@
 from random import randint
 
-from .. interpreter.method import Method
-from .. interpreter.value import Value
-from .. ir.expr import MethodCall
-from .. ir.constant import Constant
-from .. ir.type import IntType, NumType, ObjectType
+from interpreter import Method
+from interpreter import Value
+from ..ir.expr import MethodCall
+from ..ir.constant import Constant
+from ..ir.type import IntType, NumType, ObjectType
 
 
 class UniformDistribution(Value):
@@ -42,6 +42,7 @@ METHODS = {
     "uniform": Method("uniform", [NumType(), NumType()], ObjectType(), uniform),
     "uni": Method("uniform", [IntType(32), IntType(32)], IntType(32), uni),
 }
+
 
 def gen(lang, stmt, wr, declarations):
     """

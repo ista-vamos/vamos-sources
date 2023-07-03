@@ -1,9 +1,9 @@
-from interpreter.iterators import FiniteIterator
-from interpreter.method import Method
-from interpreter.value import Value, Trace
-from ir.constant import Constant
-from ir.ir import Event
-from ir.type import (
+from vamos_sources.interpreter.iterators import FiniteIterator
+from vamos_sources.interpreter.method import Method
+from vamos_sources.interpreter.value import Value, Trace
+from vamos_sources.spec.ir.constant import Constant
+from vamos_sources.spec.ir.ir import Event
+from vamos_sources.spec.ir.type import (
     IterableType,
     StringType,
     OutputType,
