@@ -2,15 +2,15 @@ import sys
 from os import readlink
 from os.path import abspath, dirname, islink
 
-from interpreter.iterators import ListIterator, Iterator
-from interpreter.method import Method
-from interpreter.module import Module
-from interpreter.state import State
-from interpreter.typemethods import initialize_type_methods
-from interpreter.value import Iterable, Value, Trace, Tuple
-from ir.constant import Constant
-from ir.element import Identifier
-from ir.expr import (
+from .iterators import ListIterator, Iterator
+from .method import Method
+from .module import Module
+from .state import State
+from .typemethods import initialize_type_methods
+from .value import Iterable, Value, Trace, Tuple
+from .. ir.constant import Constant
+from .. ir.element import Identifier
+from .. ir.expr import (
     MethodCall,
     New,
     IfExpr,
@@ -20,8 +20,8 @@ from ir.expr import (
     TupleExpr,
     CompareExpr,
 )
-from ir.ir import Let, Yield, StatementList, ForEach, Event, Continue, Break
-from ir.type import OutputType, STRING_TYPE, BOOL_TYPE
+from .. ir.ir import Let, Yield, StatementList, ForEach, Event, Continue, Break
+from .. ir.type import OutputType, STRING_TYPE, BOOL_TYPE
 
 CONTINUE = 2
 BREAK = 3

@@ -1,5 +1,5 @@
-from interpreter.iterators import TupleIterator
-from ir.type import IterableType
+from .iterators import TupleIterator
+from .. ir.type import IterableType
 
 
 class Value:

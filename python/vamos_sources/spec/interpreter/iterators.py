@@ -1,5 +1,5 @@
-from ir.constant import Constant
-from ir.type import ITERATOR_TYPE
+from .. ir.constant import Constant
+from .. ir.type import ITERATOR_TYPE
 
 
 class Iterator:

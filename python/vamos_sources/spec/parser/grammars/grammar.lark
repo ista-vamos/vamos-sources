@@ -1,7 +1,7 @@
 start: events_and_imports statements
 events_and_imports: (eventsspec [imports] | imports eventsspec)
 // for inlined specifications
-inlined: imports statements
+inlined: events_and_imports? statements
 
 eventsspec: [eventsfile] eventdecl+
 eventsfile: "events" ESCAPED_STRING ";"? WSEOL

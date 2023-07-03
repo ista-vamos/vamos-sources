@@ -1,6 +1,7 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
+from .context import Context
 from .. ir.constant import Constant
 from .. ir.element import Identifier, Element
 from .. ir.expr import (
@@ -41,6 +42,10 @@ from .decls import DataField, EventDecl
 
 
 class BaseTransformer(Transformer):
+    def __init__(self, ctx=None):
+        super().__init__()
+        self.ctx = ctx or Context()
+
     # def NUMBER(self, items):
     #    return Constant(int(items.value), NumType())
     def constant_tuple(self, items):
@@ -83,7 +88,7 @@ class ProcessTypes(BaseTransformer):
 class ProcessEvents(BaseTransformer):
     def __init__(self):
         super().__init__()
-        self.eventdecls = {}
+        self._eventdecls = {}
 
     def datafield(self, items):
         name = items[0].children[0]
@@ -100,9 +105,9 @@ class ProcessEvents(BaseTransformer):
 
         decls = []
         for name in names:
-            assert name.name not in self.eventdecls, name
+            assert name.name not in self._eventdecls, name
             ev = EventDecl(name, fields)
-            self.eventdecls[name.name] = ev
+            self._eventdecls[name.name] = ev
             decls.append(ev)
         return decls
 
@@ -115,11 +120,8 @@ def identifier_or_expr(item):
 
 
 class ProcessAST(BaseTransformer):
-    def __init__(self):
-        super().__init__()
-        self.decls = {}
-        self.eventdecls = {}
-        self.usertypes = {}
+    def __init__(self, ctx=None):
+        super().__init__(ctx)
 
     def boolexpr(self, items):
         assert len(items) == 1, items
@@ -210,6 +212,10 @@ class ProcessAST(BaseTransformer):
     def start(self, items):
         return Program(items[0][1], items[0][0], StatementList(items[1]))
 
+    def inlined(self, items):
+        assert len(items) == 2, items
+        return Program(items[0][1], items[0][0], StatementList(items[1]))
+
     def eventseq(self, items):
         return items
 
@@ -241,9 +247,9 @@ class ProcessAST(BaseTransformer):
     def events_and_imports(self, items):
         _imports = items[0]
         _events = items[1]
-        assert all((e.name.name in self.eventdecls for e in _events)), (
+        assert all((e.name.name in self.ctx.eventdecls for e in _events)), (
             _events,
-            self.eventdecls,
+            self.ctx.eventdecls,
         )
         return items
 
@@ -263,9 +269,7 @@ class ProcessAST(BaseTransformer):
             assert it.data == "eventdecl", it
             events = it.children[0]
             allevents.extend(events)
-            for ev in events:
-                assert ev.name.name not in self.eventdecls, ev
-                self.eventdecls[ev.name.name] = ev
+            self.ctx.add_eventdecl(*events)
         return allevents
 
     def foreach(self, items):
@@ -342,9 +346,9 @@ def prnode(lvl, node, *args):
     print(" " * lvl * 2, node)
 
 
-def transform_ast(lark_ast):
-    print(lark_ast.pretty())
-    base = ProcessAST()
+def transform_ast(lark_ast, ctx=None):
+    #print(lark_ast.pretty())
+    base = ProcessAST(ctx)
     T = merge_transformers(
         base,
         comm=BaseTransformer(),

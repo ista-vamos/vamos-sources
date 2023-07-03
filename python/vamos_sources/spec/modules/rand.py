@@ -1,9 +1,10 @@
 from random import randint
 
-from interpreter.method import Method
-from interpreter.value import Value
-from ir.constant import Constant
-from ir.type import IntType, NumType, ObjectType
+from .. interpreter.method import Method
+from .. interpreter.value import Value
+from .. ir.expr import MethodCall
+from .. ir.constant import Constant
+from .. ir.type import IntType, NumType, ObjectType
 
 
 class UniformDistribution(Value):
@@ -41,3 +42,18 @@ METHODS = {
     "uniform": Method("uniform", [NumType(), NumType()], ObjectType(), uniform),
     "uni": Method("uniform", [IntType(32), IntType(32)], IntType(32), uni),
 }
+
+def gen(lang, stmt, wr, declarations):
+    """
+    Generate code in `lang` for `stmt`.
+    """
+    if lang == "cpp":
+        gen_cpp(stmt, wr, declarations)
+    else:
+        raise NotImplementedError(f"Unknown language: {lang}")
+
+
+def gen_cpp(stmt, wr, declarations):
+    if isinstance(stmt, MethodCall):
+        if stmt.rhs.name == "uniform":
+            wr("__rand_uniform()")
