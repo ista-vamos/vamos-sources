@@ -10,6 +10,7 @@ sys.path.insert(0, abspath(f"{self_path}/../.."))
 
 sys.path.insert(0, abspath(f"{self_path}/../../.."))
 from config import vamos_common_PYTHONPATH
+
 sys.path.pop(0)
 sys.path.append(vamos_common_PYTHONPATH)
 
