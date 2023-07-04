@@ -1,4 +1,4 @@
-from ..ir.element import Identifier
+from vamos_sources.spec.ir.element import Identifier
 
 
 class Context:
@@ -30,3 +30,8 @@ class Context:
             name = name.name
         assert isinstance(name, str), (name, type(name))
         return self.eventdecls.get(name)
+
+    def dump(self):
+        print(self.decls)
+        print(self.eventdecls)
+        print(self.usertypes)

@@ -7,6 +7,17 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 find_package(vamos-buffers REQUIRED)
+get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
+
+if (NOT ${vamos-common_DIR})
+	message(STATUS "vamos-common_DIR not set, assuming vamos-common is in the same directory as vamos-buffers."
+		       "If not true, set -Dvamos-common_DIR= ")
+	string(REPLACE buffers common vamos-common_DIR ${vamos-buffers_DIR})
+	message(STATUS "vamos-common_DIR=${vamos-common_DIR}")
+endif()
+
+find_package(vamos-common REQUIRED)
+
 
 if(NOT CMAKE_BUILD_TYPE)
 	message(STATUS "Build type not set. Setting buffer's build type.")
@@ -55,8 +66,6 @@ endif()
 
 add_subdirectory(src)
 
-
-get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 get_target_property(vamos-buffers_vamos-buffers-lib vamos-buffers-lib LOCATION)
 get_target_property(vamos-buffers_vamos-buffers-ringbuf vamos-buffers-ringbuf LOCATION)
 get_target_property(vamos-buffers_vamos-buffers-shmbuf vamos-buffers-shmbuf LOCATION)
@@ -65,6 +74,8 @@ get_filename_component(vamos-buffers_LIBRARIES_DIRS_lib ${vamos-buffers_vamos-bu
 get_filename_component(vamos-buffers_LIBRARIES_DIRS_core ${vamos-buffers_vamos-buffers-ringbuf} DIRECTORY)
 get_filename_component(vamos-buffers_LIBRARIES_DIRS_shmbuf ${vamos-buffers_vamos-buffers-shmbuf} DIRECTORY)
 get_filename_component(vamos-buffers_LIBRARIES_DIRS_streams ${vamos-buffers_vamos-buffers-streams} DIRECTORY)
+
+get_filename_component(vamos-common_DIR ${vamos-common_DIR} ABSOLUTE)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 	       ${CMAKE_CURRENT_SOURCE_DIR}/config.py)

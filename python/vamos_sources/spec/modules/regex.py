@@ -18,7 +18,7 @@ class ReMatch(Value):
         self.string = s
 
         assert isinstance(rexp, Constant), rexp
-        assert rexp.type() == STRING_TYPE, rexp
+        assert rexp._type() == STRING_TYPE, rexp
         re = str(rexp.value)
         text = str(s.value)
         self.matched = re_search(re, text) if _search else re_match(re, text)

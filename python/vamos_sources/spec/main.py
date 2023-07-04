@@ -65,7 +65,7 @@ def parse_arguments():
         help="Output directory (default: /tmp/mpt)",
     )
     parser.add_argument(
-        "--build-type", action="store", help="Force build type for the CMake project"
+        "--build-_type", action="store", help="Force build _type for the CMake project"
     )
     parser.add_argument("--debug", action="store_true", help="Debugging mode")
     parser.add_argument(
@@ -110,7 +110,7 @@ def parse_arguments():
         elif inp is not None:
             inp.args.append(fl)
         else:
-            raise RuntimeError(f"Unknown file type: {fl}")
+            raise RuntimeError(f"Unknown file _type: {fl}")
 
     return args
 

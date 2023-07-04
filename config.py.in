@@ -15,3 +15,4 @@ vamos_buffers_C_COMPILER               = "@vamos-buffers_C_COMPILER@"
 
 vamos_buffers_OPTION_ENABLE_IPO        = "@vamos-buffers_OPTION_ENABLE_IPO@".upper()
 
+vamos_common_PYTHONPATH  = "@vamos-common_PYTHONPATH@"

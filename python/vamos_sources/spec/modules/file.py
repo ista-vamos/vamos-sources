@@ -17,7 +17,7 @@ class FileReader(Value):
     def __init__(self, fl: Constant):
         super().__init__("<FileReader>", IterableType())
         assert isinstance(fl, Constant), fl
-        assert fl.type() == STRING_TYPE, fl
+        assert fl._type() == STRING_TYPE, fl
 
         self.file = fl.value
         self.fobj = open(self.file, "r")
@@ -41,7 +41,7 @@ class FileReader(Value):
 class FileWriter(Value):
     def __init__(self, fl: Constant):
         assert isinstance(fl, Constant), fl
-        assert fl.type == STRING_TYPE, fl
+        assert fl._type == STRING_TYPE, fl
 
         super().__init__("<FileWriter>", OutputType())
         self.file = fl.value

@@ -162,7 +162,7 @@ class IfExpr(Expr):
     def __init__(self, cond, true_stmts, false_stmts=None):
         super().__init__(None)
         assert isinstance(cond, Expr), cond
-        # assert isinstance(cond.type(), BoolType), cond
+        # assert isinstance(cond._type(), BoolType), cond
         self.cond = cond
         self.true_stmts = true_stmts
         self.false_stmts = false_stmts

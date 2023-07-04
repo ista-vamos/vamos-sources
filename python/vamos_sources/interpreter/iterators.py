@@ -56,7 +56,7 @@ class FiniteIterator(Iterator):
     """
 
     def __init__(self, vals, ty):
-        "ty: type of the constants of each value"
+        "ty: _type of the constants of each value"
         self._const_ty = ty
         self._last_value = None
         self._done = False
@@ -82,7 +82,7 @@ class FiniteIterator(Iterator):
 
 class LazyIterator(Iterator):
     def __init__(self, vals, ty):
-        "ty: type of the constants of each value"
+        "ty: _type of the constants of each value"
         self._const_ty = ty
         self._last_value = None
         self._done = False

@@ -108,7 +108,7 @@ class Interpreter:
     def get_method(self, name):
         method = None
         if isinstance(name.lhs, Expr):
-            obj = name.lhs.type()
+            obj = name.lhs._type()
         else:
             obj = self.state.try_get(name.lhs.name)
 
@@ -127,7 +127,7 @@ class Interpreter:
 
         assert isinstance(method, Method), (name, method)
         if isinstance(name.lhs, Expr):
-            # this method is a method of a type, we must pass the object as a parameter
+            # this method is a method of a _type, we must pass the object as a parameter
             return method.execute(
                 self.state, list(map(self.eval, [name.lhs] + name.params))
             )
@@ -176,7 +176,7 @@ class Interpreter:
             return Constant(self.input.args[n], STRING_TYPE)
 
         if isinstance(name, TupleExpr):
-            return Tuple([self.eval(v) for v in name.values], name.type())
+            return Tuple([self.eval(v) for v in name.values], name._type())
 
         raise NotImplementedError(
             f"Invalid/unsupported expr to eval: {name} : {type(name)}"

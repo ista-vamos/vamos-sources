@@ -1,16 +1,17 @@
-import sys
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
 
+import sys
+
 from .codegen import CodeGen
 from ..spec.ir.element import Identifier
-from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Event, Continue, Break
 from ..spec.ir.expr import Expr, MethodCall, IfExpr, New, IsIn
+from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Event, Continue, Break
 
 
 class CodeGenCpp(CodeGen):
-    def __init__(self, args, codemapper=None):
-        super().__init__(args, codemapper)
+    def __init__(self, args, ctx, codemapper=None):
+        super().__init__(args, ctx, codemapper)
         self_path = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
@@ -203,3 +204,4 @@ class CodeGenCpp(CodeGen):
             wr('#include "events.h"\n\n')
             self._gen_input_stream_class(ast, wr)
             self._gen_inputs_class(ast, wr)
+

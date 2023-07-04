@@ -49,7 +49,7 @@ class BaseTransformer(Transformer):
     # def NUMBER(self, items):
     #    return Constant(int(items.value), NumType())
     def constant_tuple(self, items):
-        return TupleExpr(items, TupleType([it.type for it in items]))
+        return TupleExpr(items, TupleType([it._type for it in items]))
 
     def constant_string(self, items):
         # strip quotes from the string
@@ -348,6 +348,7 @@ def prnode(lvl, node, *args):
 
 def transform_ast(lark_ast, ctx=None):
     # print(lark_ast.pretty())
+    ctx = ctx or Context()
     base = ProcessAST(ctx)
     T = merge_transformers(
         base,
@@ -362,4 +363,4 @@ def transform_ast(lark_ast, ctx=None):
 
     visit_ast(ast, 1, prnode)
 
-    return ast
+    return ast, ctx

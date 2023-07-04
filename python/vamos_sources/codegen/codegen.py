@@ -1,6 +1,7 @@
 from os import mkdir
 from os.path import join as pathjoin, abspath
 from shutil import rmtree, copy as shutilcopy
+
 from sys import stderr
 
 from ..spec.ir.type import Type, BoolType, IntType, UIntType
@@ -22,7 +23,7 @@ class CodeMapper:
 
 
 class CodeGen:
-    def __init__(self, args, codemapper=None):
+    def __init__(self, args, ctx, codemapper=None):
         if codemapper is None:
             self.codemapper = CodeMapper()
         else:
@@ -32,6 +33,7 @@ class CodeGen:
         self.files = []
         self.out_dir = abspath(args.out_dir)
         self.templates_path = None
+        self.ctx = ctx
 
         try:
             mkdir(self.out_dir)
