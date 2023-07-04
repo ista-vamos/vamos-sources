@@ -4,6 +4,7 @@ from os.path import abspath, dirname, islink, join as pathjoin
 
 from vamos_common.codegen.codegen import CodeGen
 from vamos_common.spec.ir.expr import Expr
+from vamos_common.spec.ir.constant import Constant
 from vamos_common.spec.ir.identifier import Identifier
 from vamos_common.types.type import Type, BoolType, IntType, UIntType
 
@@ -98,9 +99,9 @@ class CodeGenCpp(CodeGen):
     def _gen_yield(self, stmt, wr, wr_h):
         wr("{\n")
         for ev in stmt.events:
-            wr("__yield(")
+            wr(f"{stmt.trace.name}->push(")
             self._gen(ev, wr, wr_h)
-            wr(f", {stmt.trace.name});\n")
+            wr(");\n")
         wr("}\n")
 
     def _gen_new(self, stmt, wr):
@@ -160,6 +161,8 @@ class CodeGenCpp(CodeGen):
             self._gen_is_in(stmt, wr, wr_h)
         elif isinstance(stmt, IfExpr):
             self._gen_if(stmt, wr, wr_h)
+        elif isinstance(stmt, Constant):
+            wr(str(stmt.value))
         else:
             raise NotImplementedError(f"Codegen not implemented for expr {stmt}")
 

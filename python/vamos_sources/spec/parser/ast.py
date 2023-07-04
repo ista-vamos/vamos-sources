@@ -27,6 +27,7 @@ from ..ir.expr import (
     TupleExpr,
     IsIn,
     CompareExpr,
+    Cast,
 )
 from ..ir.ir import (
     Event,
@@ -203,6 +204,10 @@ class ProcessAST(BaseTransformer):
                 assert item.data == "name", item
                 params.append(item.children[0])
         return MethodCall(lhs, method, params)
+
+    def cast(self, items):
+        assert len(items) == 2
+        return Cast(items[0], items[1])
 
     def expr(self, items):
         if isinstance(items[0], Expr):

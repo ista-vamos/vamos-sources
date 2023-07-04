@@ -15,6 +15,26 @@ class TupleExpr(Expr):
         return self.values
 
 
+class Cast(Expr):
+    def __init__(self, val, ty):
+        super().__init__()
+        self._value = val
+        self._type = ty
+
+    @property
+    def value(self):
+        return self._value
+
+    def type(self):
+        return self._type
+
+    def pretty_str(self):
+        return f"{self.value} as {self.type()}"
+
+    def __repr__(self):
+        return f"Cast({self.value}, {self.type()})"
+
+
 #
 # class Var(Expr):
 #     def __init__(self, v):

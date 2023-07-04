@@ -22,11 +22,13 @@ brk: "break"
 let: "let" name "=" expr
 ifexpr: "if" (boolexpr | methodcall | value) "{" statements "}" ["else" "{" statements "}"]
 foreach: "foreach" name "in" iterable "{" statements "}"
-runcommand: "run" /[^\n]/*
+cast: expr "as" type
 yieldto: "yield" eventseq "to" tracename
 eventseq: event+
 tracename: NAME
 event: name ["(" params ")"]
+
+runcommand: "run" /[^\n]/*
 
 
 // FIXME
@@ -43,9 +45,9 @@ compareexpr:  expr "==" expr   -> eq
             | expr "<" expr    -> lt
             | expr ">" expr    -> gt
 
-expr: boolexpr | newexpr | methodcall | specarg | constant | name | "(" expr ")"
+expr: boolexpr | newexpr | methodcall | specarg | cast | constant | name | "(" expr ")"
 
-specarg: "$" NUMBER
+specarg: /\$\d+/
 iterable: name | methodcall
 
 newexpr: "new" type

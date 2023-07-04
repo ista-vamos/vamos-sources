@@ -58,3 +58,9 @@ def gen_cpp(stmt, wr, declarations):
     if isinstance(stmt, MethodCall):
         if stmt.rhs.name == "uniform":
             wr("__rand_uniform()")
+        elif stmt.rhs.name == "uni":
+            wr("__rand_uni()")
+        else:
+            raise NotImplementedError(f"Unknown method: {stmt}")
+    else:
+        raise NotImplementedError(f"Unknown stmt: {stmt}")
