@@ -3,15 +3,38 @@ from os.path import abspath, dirname, islink, join as pathjoin
 
 import sys
 
-from .codegen import CodeGen
-from ..spec.ir.element import Identifier
+from vamos_common.codegen.codegen import CodeGen
+from vamos_common.types.type import Type, BoolType, IntType, UIntType
+from vamos_common.spec.ir.identifier import Identifier
+
 from ..spec.ir.expr import Expr, MethodCall, IfExpr, New, IsIn
 from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Event, Continue, Break
 
 
+class CodeMapper:
+    def append_mstring(self, M, pos_s, pos_e):
+        return f"{M}.append(MString::Letter({pos_s}, {pos_e}))"
+
+    def c_type(self, ty: Type):
+        assert isinstance(ty, Type), ty
+        if isinstance(ty, BoolType):
+            return f"bool"
+        if isinstance(ty, IntType):
+            return f"int{ty.bitwidth}_t"
+        if isinstance(ty, UIntType):
+            return f"uint{ty.bitwidth}_t"
+        raise NotImplementedError(f"Unknown type: {ty}")
+
+
 class CodeGenCpp(CodeGen):
     def __init__(self, args, ctx, codemapper=None):
-        super().__init__(args, ctx, codemapper)
+        super().__init__(args, ctx)
+
+        if codemapper is None:
+            self.codemapper = CodeMapper()
+        else:
+            self.codemapper = codemapper
+
         self_path = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
@@ -204,4 +227,3 @@ class CodeGenCpp(CodeGen):
             wr('#include "events.h"\n\n')
             self._gen_input_stream_class(ast, wr)
             self._gen_inputs_class(ast, wr)
-

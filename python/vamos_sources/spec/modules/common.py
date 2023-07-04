@@ -1,6 +1,7 @@
 from vamos_sources.interpreter.iterators import FiniteIterator
 from vamos_sources.interpreter.method import Method
-from vamos_sources.spec.ir.type import IntType, NumType, ITERATOR_TYPE
+
+from vamos_common.types.type import IntType, NumType, ITERATOR_TYPE
 from vamos_sources.spec.ir.expr import MethodCall
 
 

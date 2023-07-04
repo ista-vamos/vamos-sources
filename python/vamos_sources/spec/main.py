@@ -8,6 +8,11 @@ from os.path import islink, dirname, abspath
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
 sys.path.insert(0, abspath(f"{self_path}/../.."))
 
+sys.path.insert(0, abspath(f"{self_path}/../../.."))
+from config import vamos_common_PYTHONPATH
+sys.path.pop(0)
+sys.path.append(vamos_common_PYTHONPATH)
+
 from vamos_sources.interpreter.interpreter import Interpreter
 from vamos_sources.spec.parser.parser import Parser
 
@@ -26,7 +31,7 @@ def main(cmdargs):
     # print(args)
     programs = []
     for inp in cmdargs.inputs:
-        ast = parser.parse_path(inp.file)
+        ast, _ = parser.parse_path(inp.file)
         programs.append((ast, inp))
         # print(ast.pretty())
 

@@ -4,23 +4,6 @@ from shutil import rmtree, copy as shutilcopy
 
 from sys import stderr
 
-from ..spec.ir.type import Type, BoolType, IntType, UIntType
-
-
-class CodeMapper:
-    def append_mstring(self, M, pos_s, pos_e):
-        return f"{M}.append(MString::Letter({pos_s}, {pos_e}))"
-
-    def c_type(self, ty: Type):
-        assert isinstance(ty, Type), ty
-        if isinstance(ty, BoolType):
-            return f"bool"
-        if isinstance(ty, IntType):
-            return f"int{ty.bitwidth}_t"
-        if isinstance(ty, UIntType):
-            return f"uint{ty.bitwidth}_t"
-        raise NotImplementedError(f"Unknown type: {ty}")
-
 
 class CodeGen:
     def __init__(self, args, ctx, codemapper=None):

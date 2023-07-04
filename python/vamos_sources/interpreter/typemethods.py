@@ -1,6 +1,6 @@
 from .method import Method
-from vamos_sources.spec.ir.constant import Constant
-from vamos_sources.spec.ir.type import (
+from vamos_common.spec.ir.constant import Constant
+from vamos_common.types.type import (
     StringType,
     type_from_token,
     NumType,

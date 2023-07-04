@@ -1,9 +1,21 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
 
-from .context import Context
-from ..ir.constant import Constant
-from ..ir.element import Identifier, Element
+from vamos_common.parser.context import Context
+from vamos_common.spec.ir.constant import Constant
+from vamos_common.spec.ir.element import Element
+from vamos_common.spec.ir.identifier import Identifier
+from vamos_common.types.type import (
+    NumType,
+    type_from_token,
+    UserType,
+    TraceType,
+    HypertraceType,
+    Type,
+    StringType,
+    TupleType,
+)
+
 from ..ir.expr import (
     BoolExpr,
     New,
@@ -27,16 +39,6 @@ from ..ir.ir import (
     OutputDecl,
     Continue,
     Break,
-)
-from ..ir.type import (
-    NumType,
-    type_from_token,
-    UserType,
-    TraceType,
-    HypertraceType,
-    Type,
-    StringType,
-    TupleType,
 )
 from .decls import DataField, EventDecl
 

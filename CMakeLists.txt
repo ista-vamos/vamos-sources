@@ -9,13 +9,14 @@ set(CMAKE_C_EXTENSIONS OFF)
 find_package(vamos-buffers REQUIRED)
 get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 
-if (NOT ${vamos-common_DIR})
-	message(STATUS "vamos-common_DIR not set, assuming vamos-common is in the same directory as vamos-buffers."
+if (NOT DEFINED ${vamos-common_DIR})
+	message(STATUS "vamos-common_DIR not set, assuming vamos-common is "
+		       "in the same directory as vamos-buffers."
 		       "If not true, set -Dvamos-common_DIR= ")
 	string(REPLACE buffers common vamos-common_DIR ${vamos-buffers_DIR})
-	message(STATUS "vamos-common_DIR=${vamos-common_DIR}")
 endif()
 
+message(STATUS "vamos-common_DIR=${vamos-common_DIR}")
 find_package(vamos-common REQUIRED)
 
 

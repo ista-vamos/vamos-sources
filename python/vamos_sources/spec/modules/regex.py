@@ -2,8 +2,8 @@ from re import match as re_match, search as re_search
 
 from vamos_sources.interpreter.method import Method
 from vamos_sources.interpreter.value import Value
-from vamos_sources.spec.ir.constant import Constant
-from vamos_sources.spec.ir.type import (
+from vamos_common.spec.ir.constant import Constant
+from vamos_common.types.type import (
     BoolType,
     BOOL_TYPE,
     STRING_TYPE,
@@ -18,7 +18,7 @@ class ReMatch(Value):
         self.string = s
 
         assert isinstance(rexp, Constant), rexp
-        assert rexp._type() == STRING_TYPE, rexp
+        assert rexp.type() == STRING_TYPE, rexp
         re = str(rexp.value)
         text = str(s.value)
         self.matched = re_search(re, text) if _search else re_match(re, text)

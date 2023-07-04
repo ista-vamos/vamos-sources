@@ -1,11 +1,6 @@
-from ..ir.element import Element
-from ..ir.type import BoolType, STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
-
-
-class Expr(Element):
-    """
-    Class representing an expression in the language
-    """
+from vamos_common.spec.ir.element import Element
+from vamos_common.types.type import BoolType, STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
+from vamos_common.spec.ir.expr import Expr
 
 
 class TupleExpr(Expr):

@@ -1,5 +1,5 @@
-from ..ir.element import Element
-from ..ir.type import EventType
+from vamos_common.spec.ir.element import Element
+from vamos_common.types.type import EventType
 
 
 class Program(Element):

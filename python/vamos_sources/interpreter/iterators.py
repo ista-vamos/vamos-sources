@@ -1,5 +1,5 @@
-from vamos_sources.spec.ir.constant import Constant
-from vamos_sources.spec.ir.type import ITERATOR_TYPE
+from vamos_common.spec.ir.constant import Constant
+from vamos_common.types.type import ITERATOR_TYPE
 
 
 class Iterator:
