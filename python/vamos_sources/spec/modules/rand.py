@@ -2,7 +2,6 @@ from random import randint
 
 from vamos_common.spec.ir.constant import Constant
 from vamos_common.types.type import IntType, NumType, ObjectType
-
 from vamos_sources.interpreter.method import Method
 from vamos_sources.interpreter.value import Value
 from vamos_sources.spec.ir.expr import MethodCall

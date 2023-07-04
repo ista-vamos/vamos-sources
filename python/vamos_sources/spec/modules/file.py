@@ -1,8 +1,3 @@
-from vamos_sources.interpreter.iterators import FiniteIterator
-from vamos_sources.interpreter.method import Method
-from vamos_sources.interpreter.value import Value, Trace
-from vamos_sources.spec.ir.ir import Event
-
 from vamos_common.spec.ir.constant import Constant
 from vamos_common.types.type import (
     IterableType,
@@ -12,6 +7,10 @@ from vamos_common.types.type import (
     ITERATOR_TYPE,
     ObjectType,
 )
+from vamos_sources.interpreter.iterators import FiniteIterator
+from vamos_sources.interpreter.method import Method
+from vamos_sources.interpreter.value import Value, Trace
+from vamos_sources.spec.ir.ir import Event
 
 
 class FileReader(Value):

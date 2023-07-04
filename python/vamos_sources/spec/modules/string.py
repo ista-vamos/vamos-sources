@@ -1,5 +1,5 @@
-from ir.constant import Constant
-from ir.type import STRING_TYPE
+from vamos_common.spec.ir.constant import Constant
+from vamos_common.types.type import STRING_TYPE
 
 
 def concat(_, params):

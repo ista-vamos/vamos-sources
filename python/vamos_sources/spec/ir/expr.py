@@ -1,6 +1,5 @@
-from vamos_common.spec.ir.element import Element
-from vamos_common.types.type import BoolType, STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
 from vamos_common.spec.ir.expr import Expr
+from vamos_common.types.type import STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
 
 
 class TupleExpr(Expr):

@@ -5,6 +5,7 @@ from vamos_common.parser.context import Context
 from vamos_common.spec.ir.constant import Constant
 from vamos_common.spec.ir.element import Element
 from vamos_common.spec.ir.identifier import Identifier
+from vamos_common.spec.ir.decls import DataField, EventDecl
 from vamos_common.types.type import (
     NumType,
     type_from_token,
@@ -40,7 +41,6 @@ from ..ir.ir import (
     Continue,
     Break,
 )
-from .decls import DataField, EventDecl
 
 
 class BaseTransformer(Transformer):

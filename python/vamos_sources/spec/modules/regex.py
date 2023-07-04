@@ -1,7 +1,5 @@
 from re import match as re_match, search as re_search
 
-from vamos_sources.interpreter.method import Method
-from vamos_sources.interpreter.value import Value
 from vamos_common.spec.ir.constant import Constant
 from vamos_common.types.type import (
     BoolType,
@@ -10,6 +8,8 @@ from vamos_common.types.type import (
     UIntType,
     ObjectType,
 )
+from vamos_sources.interpreter.method import Method
+from vamos_sources.interpreter.value import Value
 
 
 class ReMatch(Value):
