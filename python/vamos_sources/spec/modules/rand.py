@@ -6,6 +6,8 @@ from vamos_sources.interpreter.method import Method
 from vamos_sources.interpreter.value import Value
 from vamos_sources.spec.ir.expr import MethodCall
 
+from ._common import gen_params
+
 
 class UniformDistribution(Value):
     def __init__(self, l, h):
@@ -44,22 +46,34 @@ METHODS = {
 }
 
 
-def gen(lang, stmt, wr, declarations):
+def gen(lang, codegen, stmt, wr, wr_h):
     """
     Generate code in `lang` for `stmt`.
     """
     if lang == "cpp":
-        gen_cpp(stmt, wr, declarations)
+        gen_cpp(stmt, codegen, wr, wr_h)
     else:
         raise NotImplementedError(f"Unknown language: {lang}")
 
 
-def gen_cpp(stmt, wr, declarations):
+def can_use_randint(ty):
+    return (isinstance(ty, IntType) and ty.bitwidth <= 32) or isinstance(ty, NumType)
+
+
+def gen_cpp(stmt, codegen, wr, wr_h):
     if isinstance(stmt, MethodCall):
         if stmt.rhs.name == "uniform":
-            wr("__rand_uniform()")
+            wr("__rand_uniform(")
+            gen_params(codegen, stmt, wr, wr_h)
+            wr(")")
         elif stmt.rhs.name == "uni":
-            wr("__rand_uni()")
+            if can_use_randint(stmt.params[0].type()):
+                wr("std::experimental::randint(")
+                gen_params(codegen, stmt, wr, wr_h)
+                wr(")")
+                codegen.add_std_include("experimental/random")
+            else:
+                raise NotImplementedError(f"Not implemented rand.uni: {stmt}")
         else:
             raise NotImplementedError(f"Unknown method: {stmt}")
     else:

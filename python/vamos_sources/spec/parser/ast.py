@@ -1,15 +1,15 @@
 from lark import Transformer
 from lark.visitors import merge_transformers
-
 from vamos_common.parser.context import Context
 from vamos_common.spec.ir.constant import Constant
+from vamos_common.spec.ir.decls import DataField, EventDecl
 from vamos_common.spec.ir.element import Element
 from vamos_common.spec.ir.identifier import Identifier
-from vamos_common.spec.ir.decls import DataField, EventDecl
 from vamos_common.types.type import (
     NumType,
     type_from_token,
     UserType,
+    EventType,
     TraceType,
     HypertraceType,
     Type,
@@ -76,7 +76,11 @@ class ProcessTypes(BaseTransformer):
         return type_from_token(items[0])
 
     def usertype(self, items):
-        return UserType(str(items[0]))
+        assert isinstance(items[0], Identifier), items[0]
+        name = items[0].name
+        if self.ctx.get_eventdecl(name):
+            return EventType(name)
+        return UserType(name)
 
     def tracetype(self, items):
         return TraceType(items)
@@ -89,9 +93,8 @@ class ProcessTypes(BaseTransformer):
 
 
 class ProcessEvents(BaseTransformer):
-    def __init__(self):
-        super().__init__()
-        self._eventdecls = {}
+    def __init__(self, ctx):
+        super().__init__(ctx)
 
     def datafield(self, items):
         name = items[0].children[0]
@@ -108,9 +111,8 @@ class ProcessEvents(BaseTransformer):
 
         decls = []
         for name in names:
-            assert name.name not in self._eventdecls, name
             ev = EventDecl(name, fields)
-            self._eventdecls[name.name] = ev
+            self.ctx.add_eventdecl(ev)
             decls.append(ev)
         return decls
 
@@ -276,7 +278,8 @@ class ProcessAST(BaseTransformer):
             assert it.data == "eventdecl", it
             events = it.children[0]
             allevents.extend(events)
-            self.ctx.add_eventdecl(*events)
+            # self.ctx.add_eventdecl(*events)
+        # self.ctx.dump()
         return allevents
 
     def foreach(self, items):
@@ -301,7 +304,8 @@ class ProcessAST(BaseTransformer):
             else:
                 assert p.data == "name", p
                 params.append(p.children[0])
-        return Event(name, params)
+        assert isinstance(name, Identifier), name
+        return Event(name.name, params)
 
     def specarg(self, items):
         return CommandLineArgument(items[0])
@@ -354,16 +358,16 @@ def prnode(lvl, node, *args):
 
 
 def transform_ast(lark_ast, ctx=None):
-    # print(lark_ast.pretty())
+    print(lark_ast.pretty())
     ctx = ctx or Context()
     base = ProcessAST(ctx)
     T = merge_transformers(
         base,
-        comm=BaseTransformer(),
+        comm=BaseTransformer(ctx),
         events=merge_transformers(
-            ProcessEvents(), comm=BaseTransformer(), types=ProcessTypes()
+            ProcessEvents(ctx), comm=BaseTransformer(ctx), types=ProcessTypes(ctx)
         ),
-        types=ProcessTypes(),
+        types=ProcessTypes(ctx),
         # expr=ProcessExpr(),
     )
     ast = T.transform(lark_ast)

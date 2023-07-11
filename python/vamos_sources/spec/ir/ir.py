@@ -160,6 +160,7 @@ class OutputDecl(Statement):
 
 class Event(Element):
     def __init__(self, name, params):
+        assert isinstance(name, str), name
         super().__init__(EventType(name))
         self.name = name
         self.params = params

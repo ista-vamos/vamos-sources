@@ -4,7 +4,7 @@ typeannot: ":" type
 type:  simpletype
       | tracetype
       | usertype
-tracetype: "[" _traceelemtype ["," _traceelemtype]* "]" | usertype
+tracetype: "[" _traceelemtype ["," _traceelemtype]* "]"
 _traceelemtype: simpletype | usertype
 
 !simpletype:  "Int8" | "Int16" | "Int32" | "Int64"
