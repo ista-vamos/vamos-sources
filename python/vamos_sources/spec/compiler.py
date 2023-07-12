@@ -16,7 +16,7 @@ sys.path.pop(0)
 
 sys.path.append(vamos_common_PYTHONPATH)
 
-from vamos_sources.interpreter.interpreter import Interpreter
+from vamos_sources.codegen.codegencpp import CodeGenCpp
 from vamos_sources.spec.parser.parser import Parser
 
 
@@ -37,15 +37,14 @@ def main(cmdargs):
         raise NotImplementedError("Currently we support only a single .vsrc file")
 
     for inp in cmdargs.inputs:
-        ast, _ = parser.parse_path(inp.file)
-        programs.append((ast, inp))
+        ast, ctx = parser.parse_path(inp.file)
+        programs.append((ast, ctx, inp))
         # print(ast.pretty())
 
-    processes = []
-    for p, inp in programs:
-        proc = Process(target=interpret, args=(p, inp, cmdargs))
-        processes.append(proc)
-        proc.run()
+    for ast, ctx, inp in programs:
+        codegen = CodeGenCpp(cmdargs, ctx)
+        codegen.generate(ast)
+        ctx.dump()
 
 
 # for p in processes:

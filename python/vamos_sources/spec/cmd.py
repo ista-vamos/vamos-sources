@@ -22,6 +22,8 @@ def parse_arguments():
         default="/tmp/mpt",
         help="Output directory (default: /tmp/mpt)",
     )
+    parser.add_argument('--out-dir-overwrite', action='store', default=True,
+                        help='Overwrite the contents of the output dir if it exists (default: True)')
     parser.add_argument(
         "--build-_type", action="store", help="Force build _type for the CMake project"
     )
