@@ -12,15 +12,15 @@ sys.path.insert(0, abspath(f"{self_path}/../.."))
 
 sys.path.insert(0, abspath(f"{self_path}/../../.."))
 from config import vamos_common_PYTHONPATH
-
 sys.path.pop(0)
+
 sys.path.append(vamos_common_PYTHONPATH)
 
 from vamos_sources.interpreter.interpreter import Interpreter
 from vamos_sources.spec.parser.parser import Parser
 
 
-def interpret(program, inp, cmdargs):
+def compile(program, inp, cmdargs):
     print("module name:", __name__)
     print("Parent process:", os.getppid())
     print("Interpreter PID:", os.getpid())
@@ -33,6 +33,9 @@ def main(cmdargs):
     parser = Parser()
     # print(args)
     programs = []
+    if len(cmdargs.inputs) != 1:
+        raise NotImplementedError("Currently we support only a single .vsrc file")
+
     for inp in cmdargs.inputs:
         ast, _ = parser.parse_path(inp.file)
         programs.append((ast, inp))
