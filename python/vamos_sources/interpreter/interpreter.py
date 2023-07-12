@@ -44,7 +44,7 @@ class StdoutOutput(Value):
         assert isinstance(event, Event), event
 
         print(
-            f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name.pretty_str()}\033[0m",
+            f"[{trace.id()}]: {trace.size()}: \033[0;34m{event.name}\033[0m",
             end="",
         )
         print(", " if event.params else "", end="")
