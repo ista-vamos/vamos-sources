@@ -62,11 +62,15 @@ class CodeGenCpp(CodeGen):
             "trace.h",
             "new_trace.h",
             "stdout_trace.h",
-            "event_and_id.h",
         ]
         for f in files:
             if f not in self.args.overwrite_default:
                 self.copy_file(f)
+
+        vamos_common_files = ["cpp/event_and_id.h"]
+        for f in vamos_common_files:
+            if f not in self.args.overwrite_default:
+                self.copy_common_file(f)
 
     def copy_files(self):
         for f in self._copy_files:
