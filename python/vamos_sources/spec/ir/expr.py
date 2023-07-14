@@ -39,22 +39,6 @@ class Cast(Expr):
         types.assign(self, self.type())
 
 
-#
-# class Var(Expr):
-#     def __init__(self, v):
-#         super().__init__()
-#         self.name = v
-#
-#     def pretty_str(self):
-#         return self.name
-#
-#     def __str__(self):
-#         return f"VAR({self.name})"
-#
-#     def __repr__(self):
-#         return f"Var({self.name})"
-
-
 class CommandLineArgument(Expr):
     """
     Argument to the specification from the command line ($1, $2, ...)
@@ -250,3 +234,29 @@ class Event(Expr):
         types.assign(self, self.type())
         for param, field in zip(self.params, self.decl.fields):
             types.assign(param, field.type())
+
+
+class BinaryOp(Expr):
+    def __init__(self, op, lhs, rhs):
+        super().__init__()
+        self.op = op
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def pretty_str(self):
+        return f"({self.lhs.pretty_str()} {self.op} {self.rhs.pretty_str()})"
+
+    def __repr__(self):
+        return f"BinaryOp({self.op}, {self.lhs}, {self.rhs})"
+
+    @property
+    def children(self):
+        return [self.lhs, self.rhs]
+
+    def typing_rule(self, types):
+        types.assign(self, types.get(self.lhs.type()))
+        types.assign(self, types.get(self.rhs.type()))
+        types.assign(self.lhs, types.get(self.rhs.type()))
+        types.assign(self.rhs, types.get(self.rhs.type()))
+        types.assign(self.lhs, types.get(self))
+        types.assign(self.rhs, types.get(self))

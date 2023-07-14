@@ -30,7 +30,6 @@ event: name "(" params ")"
 
 runcommand: "run" /[^\n]/*
 
-
 // FIXME
 boolexpr.1: "true" | "false"
           | "!" boolexpr     -> not
@@ -38,14 +37,20 @@ boolexpr.1: "true" | "false"
           | compareexpr
           | "(" boolexpr ")"
 
-compareexpr:  expr "==" expr   -> eq
+compareexpr.3:  expr "==" expr   -> eq
             | expr "!=" expr   -> ne
             | expr ">=" expr   -> ge
             | expr "<=" expr   -> le
             | expr "<" expr    -> lt
             | expr ">" expr    -> gt
 
-expr: boolexpr | newexpr | methodcall | specarg | cast | constant | event | name | "(" expr ")"
+arithexpr.2:  expr "+" expr   -> add
+           | expr "-" expr  -> sub
+           | expr "*" expr  -> mul
+           | expr "/" expr  -> div
+           | "-" expr       -> unary_minus
+
+expr: boolexpr | arithexpr | newexpr | methodcall | specarg | cast | constant | event | name | "(" expr ")"
 
 specarg: /\$\d+/
 iterable: name | methodcall

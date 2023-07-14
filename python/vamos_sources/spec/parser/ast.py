@@ -32,6 +32,7 @@ from ..ir.expr import (
     CompareExpr,
     Cast,
     Event,
+    BinaryOp,
 )
 from ..ir.ir import (
     Yield,
@@ -192,6 +193,12 @@ class ProcessAST(BaseTransformer):
         rhs = items[1] if isinstance(items[1], Expr) else items[1].children[0]
         assert isinstance(rhs, (Expr, Identifier)), rhs
         return IsIn(lhs, rhs)
+
+    def add(self, items):
+        return BinaryOp("+", items[0], items[1])
+
+    def mul(self, items):
+        return BinaryOp("*", items[0], items[1])
 
     def newexpr(self, items):
         outputs = []

@@ -22,6 +22,7 @@ from ..spec.ir.expr import (
     Cast,
     CommandLineArgument,
     Event,
+    BinaryOp,
 )
 from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Continue, Break
 
@@ -199,6 +200,16 @@ class CodeGenCpp(CodeGen):
         assert int(stmt.num[1:]), stmt
         wr(f"__command_line_arg(data, {stmt.num[1:]})")
 
+    def _gen_bin_op(self, stmt, wr, wr_h):
+        if isinstance(self.get_type(stmt), NumType):
+            wr("(")
+            self.gen(stmt.lhs, wr, wr_h)
+            wr(stmt.op)
+            self.gen(stmt.rhs, wr, wr_h)
+            wr(")")
+        else:
+            raise NotImplementedError(f"Codegen not implemented for binary op {stmt}")
+
     def _gen_event(self, stmt, wr, wr_h):
         wr(f"Event_{stmt.name}(")
         for n, p in enumerate(stmt.params):
@@ -222,6 +233,8 @@ class CodeGenCpp(CodeGen):
             self._gen_cast(stmt, wr, wr_h)
         elif isinstance(stmt, CommandLineArgument):
             self._gen_cmdarg(stmt, wr, wr_h)
+        elif isinstance(stmt, BinaryOp):
+            self._gen_bin_op(stmt, wr, wr_h)
         else:
             raise NotImplementedError(f"Codegen not implemented for expr {stmt}")
 
