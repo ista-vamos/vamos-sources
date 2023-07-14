@@ -3,9 +3,12 @@ typeannot: ":" type
 
 type:  simpletype
       | tracetype
+      | hypertracetype
       | usertype
 tracetype: "[" _traceelemtype ["," _traceelemtype]* "]"
 _traceelemtype: simpletype | usertype
+
+hypertracetype: "{" tracetype ["," tracetype]* "}"
 
 !simpletype:  "Int8" | "Int16" | "Int32" | "Int64"
             | "UInt8" | "UInt16" | "UInt32" | "UInt64"

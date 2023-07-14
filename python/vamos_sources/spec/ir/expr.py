@@ -1,4 +1,5 @@
 from vamos_common.spec.ir.expr import Expr
+from vamos_common.types.type import EventType
 from vamos_common.types.type import STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
 
 
@@ -17,16 +18,12 @@ class TupleExpr(Expr):
 
 class Cast(Expr):
     def __init__(self, val, ty):
-        super().__init__()
+        super().__init__(ty)
         self._value = val
-        self._type = ty
 
     @property
     def value(self):
         return self._value
-
-    def type(self):
-        return self._type
 
     def pretty_str(self):
         return f"{self.value} as {self.type()}"
@@ -39,7 +36,7 @@ class Cast(Expr):
         return ()
 
     def typing_rule(self, types):
-        types.assign(self, self._type)
+        types.assign(self, self.type())
 
 
 #
@@ -163,14 +160,15 @@ class IsIn(BoolExpr):
 
 
 class New(Expr):
-    def __init__(self, ty):
+    def __init__(self, ty, outputs):
         super().__init__(OBJECT_TYPE)
 
         assert ty is not None
         self.objtype = ty
+        self.outputs = outputs
 
     def __repr__(self):
-        return f"New({self.objtype})"
+        return f"New({self.objtype}, {self.outputs})"
 
     @property
     def children(self):
@@ -229,3 +227,26 @@ class MethodCall(Expr):
 
         if self.decl.typing_rule:
             self.decl.typing_rule(self, types)
+
+
+class Event(Expr):
+    def __init__(self, decl, name, params):
+        assert isinstance(name, str), name
+        super().__init__(EventType(name))
+        self.decl = decl
+        self.name = name
+        self.params = params
+
+        assert decl is None or decl.name.name == name, (decl, name)
+
+    def __repr__(self):
+        return f"Event({self.name}, {self.params})"
+
+    @property
+    def children(self):
+        return self.params or ()
+
+    def typing_rule(self, types):
+        types.assign(self, self.type())
+        for param, field in zip(self.params, self.decl.fields):
+            types.assign(param, field.type())

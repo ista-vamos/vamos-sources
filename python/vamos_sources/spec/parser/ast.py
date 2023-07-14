@@ -31,9 +31,9 @@ from ..ir.expr import (
     IsIn,
     CompareExpr,
     Cast,
+    Event,
 )
 from ..ir.ir import (
-    Event,
     Yield,
     Statement,
     Let,
@@ -194,7 +194,14 @@ class ProcessAST(BaseTransformer):
         return IsIn(lhs, rhs)
 
     def newexpr(self, items):
-        return New(items[0])
+        outputs = []
+        if len(items) > 1:
+            for item in items[1:]:
+                if item.data == "stdout":
+                    outputs.append("stdout")
+                elif item.data == "hypertrace":
+                    outputs += item.children[0].children
+        return New(items[0], outputs)
 
     def methodcall(self, items):
         lhs = items[0]
@@ -218,9 +225,12 @@ class ProcessAST(BaseTransformer):
     def expr(self, items):
         if isinstance(items[0], Expr):
             return items[0]
-        assert items[0].data == "name", items
+
         # this is an identifier
-        return items[0]
+        assert items[0].data == "name", items
+        assert len(items[0].children) == 1, items[0]
+        assert isinstance(items[0].children[0], Identifier), items[0]
+        return items[0].children[0]
 
     def start(self, items):
         return Program(items[0][1], items[0][0], StatementList(items[1]))

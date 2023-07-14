@@ -53,6 +53,7 @@ def gen(lang, codegen, stmt, wr, wr_h):
 def gen_cpp(stmt, codegen, wr, wr_h):
     if isinstance(stmt, MethodCall):
         if stmt.rhs.name == "range":
+            assert len(stmt.params) == 2, stmt
             wr(f"CommonRange<{cpp_type(stmt.params[0].type())}>(")
             gen_params(codegen, stmt, wr, wr_h)
             wr(")")

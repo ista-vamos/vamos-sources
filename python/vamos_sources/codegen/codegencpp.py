@@ -1,6 +1,5 @@
-import sys
 from os import readlink
-from os.path import abspath, dirname, islink, join as pathjoin
+from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from vamos_common.codegen.codegen import CodeGen
 from vamos_common.codegen.lang.cpp import cpp_type
@@ -15,8 +14,16 @@ from vamos_common.types.type import (
     UserType,
     NumType,
 )
-from ..spec.ir.expr import MethodCall, IfExpr, New, IsIn, Cast, CommandLineArgument
-from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Event, Continue, Break
+from ..spec.ir.expr import (
+    MethodCall,
+    IfExpr,
+    New,
+    IsIn,
+    Cast,
+    CommandLineArgument,
+    Event,
+)
+from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Continue, Break
 
 
 class CodeGenCpp(CodeGen):
@@ -29,12 +36,16 @@ class CodeGenCpp(CodeGen):
         self.templates_path = pathjoin(self_path, "templates/cpp")
         self._gen_includes = set()
         self._std_includes = set()
+        self._cmake_defs = []
         self._copy_files = set()
         # a set of features used by the generated code
         self._features = set()
 
     def get_type(self, elem):
         return self.ctx.types.get(elem)
+
+    def add_cmake_def(self, definition):
+        self._cmake_defs.append(definition)
 
     def add_include(self, name):
         self._gen_includes.add(name)
@@ -46,7 +57,13 @@ class CodeGenCpp(CodeGen):
         self._copy_files.add(name)
 
     def _copy_common_files(self):
-        files = ["main.cpp", "trace.h", "new_trace.h"]
+        files = [
+            "main.cpp",
+            "trace.h",
+            "new_trace.h",
+            "stdout_trace.h",
+            "event_and_id.h",
+        ]
         for f in files:
             if f not in self.args.overwrite_default:
                 self.copy_file(f)
@@ -99,7 +116,11 @@ class CodeGenCpp(CodeGen):
     def _gen_new(self, stmt, wr):
         ty = stmt.objtype
         if isinstance(ty, TraceType):
-            wr(f"__new_trace<Event_{self.ctx.add_tracetype(ty)}>()")
+            trace_ty = self.ctx.add_tracetype(ty, stmt.outputs).name
+            wr(f"static_cast<{trace_ty}*>(__new_trace<{trace_ty}>())")
+        elif isinstance(ty, TraceType):
+            htrace_ty = self.ctx.add_hypertracetype(ty)
+            wr(f"static_cast<{htrace_ty}*>(__new_hyper_trace<{htrace_ty}>())")
         elif isinstance(ty, (UserType, SimpleType)):
             wr(f"__new_output_var(sizeof({cpp_type(ty)}))")
         else:
@@ -145,12 +166,15 @@ class CodeGenCpp(CodeGen):
         wr("}\n")
 
     def _gen_cast(self, stmt, wr, wr_h):
-        assert stmt.value.type(), stmt
-        assert stmt.type(), stmt
+        assert stmt.type(), (stmt, stmt.type())
 
         val_ty = stmt.value.type()
         ty = stmt.type()
         fun = None
+        if val_ty is None:
+            # this must be a type annotation, just "assert" the type
+            # with static cast
+            fun = f"static_cast<{cpp_type(ty)}>"
         if val_ty == STRING_TYPE:
             if isinstance(ty, IntType):
                 if ty.bitwidth <= 32:
@@ -237,11 +261,12 @@ class CodeGenCpp(CodeGen):
             wr(msg)
 
         wr('#include "new_trace.h"\n')
+        wr('#include "stdout_trace.h"\n')
         wr('#include "traces.h"\n')
         wr('#include "events.h"\n\n')
         wr('#include "src.h"\n\n')
 
-        wr("int source_thrd(void *data) {\n")
+        wr("void source_thrd(void *data) {\n")
         for stmt in ast.children:
             self.gen(stmt, wr_ind, wr_h)
         wr("}\n\n")
@@ -272,7 +297,7 @@ class CodeGenCpp(CodeGen):
                     (basename(f) for f in self.args.cpp_files + self.args.add_gen_files)
                 ),
                 "@additional_cmake_definitions@": " ".join(
-                    (d for d in self.args.cmake_defs)
+                    (d for d in self.args.cmake_defs + self._cmake_defs)
                 ),
                 "@CMAKE_BUILD_TYPE@": build_type,
             },
@@ -293,7 +318,7 @@ class CodeGenCpp(CodeGen):
                 fh.write('#include "src-includes.h"\n\n')
                 fh.write('#include "events.h"\n\n')
 
-                fh.write("int source_thrd(void *data);\n\n")
+                fh.write("void source_thrd(void *data);\n\n")
 
                 self._gen_src(ast, f.write, fh.write)
                 self._src_finish(ast, f, fh)

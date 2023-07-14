@@ -1,5 +1,5 @@
 from vamos_common.spec.ir.element import Element
-from vamos_common.types.type import EventType, TraceType, IteratorType
+from vamos_common.types.type import TraceType, IteratorType
 
 
 class Program(Element):
@@ -179,26 +179,3 @@ class OutputDecl(Statement):
 
     def __repr__(self):
         return f"OutputDecl({self.trace}, {self.out})"
-
-
-class Event(Element):
-    def __init__(self, decl, name, params):
-        assert isinstance(name, str), name
-        super().__init__(EventType(name))
-        self.decl = decl
-        self.name = name
-        self.params = params
-
-        assert decl is None or decl.name.name == name, (decl, name)
-
-    def __repr__(self):
-        return f"Event({self.name}, {self.params})"
-
-    @property
-    def children(self):
-        return self.params or ()
-
-    def typing_rule(self, types):
-        types.assign(self, self.type())
-        for param, field in zip(self.params, self.decl.fields):
-            types.assign(param, field.type())

@@ -13,8 +13,8 @@ WSEOL: /\s*\n/
 statements: statement+
 
 statement: _statement_expr ";"? | _statement ";"
-_statement_expr: let | foreach | ifexpr | newexpr
-_statement: runcommand | methodcall | yieldto | cont | brk
+_statement_expr: let | foreach | ifexpr
+_statement: runcommand | methodcall | yieldto | cont | brk | newexpr
 
 cont: "continue"
 brk: "break"
@@ -26,7 +26,7 @@ cast: expr "as" type
 yieldto: "yield" eventseq "to" tracename
 eventseq: event+
 tracename: NAME
-event: name ["(" params ")"]
+event: name "(" params ")"
 
 runcommand: "run" /[^\n]/*
 
@@ -45,12 +45,16 @@ compareexpr:  expr "==" expr   -> eq
             | expr "<" expr    -> lt
             | expr ">" expr    -> gt
 
-expr: boolexpr | newexpr | methodcall | specarg | cast | constant | name | "(" expr ")"
+expr: boolexpr | newexpr | methodcall | specarg | cast | constant | event | name | "(" expr ")"
 
 specarg: /\$\d+/
 iterable: name | methodcall
 
-newexpr: "new" type
+newexpr: "new" type ("to" output_to ("," output_to)*)?
+output_to: "stdout" -> stdout
+           | name   -> hypertrace
+
+
 methodcall: (name | expr) "." name "(" [params] ")"
 params: (name | expr) ("," (name | expr))*
 

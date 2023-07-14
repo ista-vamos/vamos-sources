@@ -3,10 +3,11 @@
 
 #include "trace.h"
 
-template <typename... Types>
+static size_t nextTraceID = 0;
+
+template <typename TraceType>
 TraceBase *__new_trace() {
-    constexpr size_t ev_size = sizeof...(Types);
-    return nullptr;
+    return new TraceType(++nextTraceID);
 }
 
 #endif

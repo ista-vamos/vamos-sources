@@ -39,7 +39,8 @@ get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 #get_filename_component(vamos-hyper_DIR ${vamos-hyper_DIR} ABSOLUTE)
 #set(vamos-hyper_INCLUDE_DIR "${vamos-hyper_DIR}/../../include")
 
-add_executable(source main.cpp src.cpp @additional_sources@)
+add_executable(source main.cpp src.cpp traces.cpp events.cpp @additional_sources@)
 target_include_directories(source PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_link_libraries(source PUBLIC vamos-buffers-event)
 target_compile_definitions(source PRIVATE @additional_cmake_definitions@)
 
