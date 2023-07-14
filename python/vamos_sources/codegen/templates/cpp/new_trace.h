@@ -4,7 +4,7 @@
 #include "trace.h"
 
 template <typename... Types>
-Trace *__new_trace(Types... types) {
+TraceBase *__new_trace() {
     constexpr size_t ev_size = sizeof...(Types);
     return nullptr;
 }

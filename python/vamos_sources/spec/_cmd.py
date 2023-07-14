@@ -1,4 +1,6 @@
 import argparse
+
+
 class Input:
     def __init__(self, spec, cmdargs):
         self.file = spec
@@ -19,13 +21,17 @@ def parse_arguments():
     parser.add_argument(
         "--out-dir",
         action="store",
-        default="/tmp/mpt",
-        help="Output directory (default: /tmp/mpt)",
+        default="/tmp/vsrc",
+        help="Output directory (default: /tmp/vsrc)",
     )
-    parser.add_argument('--out-dir-overwrite', action='store', default=True,
-                        help='Overwrite the contents of the output dir if it exists (default: True)')
     parser.add_argument(
-        "--build-_type", action="store", help="Force build _type for the CMake project"
+        "--out-dir-overwrite",
+        action="store",
+        default=True,
+        help="Overwrite the contents of the output dir if it exists (default: True)",
+    )
+    parser.add_argument(
+        "--build-type", action="store", help="Force build _type for the CMake project"
     )
     parser.add_argument("--debug", action="store_true", help="Debugging mode")
     parser.add_argument(
@@ -54,6 +60,7 @@ def parse_arguments():
     args.cpp_files = []
     args.sources_def = None
     args.cmake_defs = args.D
+    args.add_gen_files = []
     inp = None
     for fl in args.files:
         if (

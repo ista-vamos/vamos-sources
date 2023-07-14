@@ -1,11 +1,10 @@
-import argparse
 import os
 import sys
 from multiprocessing import Process
 from os import readlink
 from os.path import islink, dirname, abspath
 
-from cmd import parse_arguments
+from _cmd import parse_arguments
 
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
 sys.path.insert(0, abspath(f"{self_path}/../.."))

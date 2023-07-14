@@ -8,18 +8,13 @@ from vamos_common.spec.ir.constant import Constant
 from vamos_common.spec.ir.expr import Expr
 from vamos_common.spec.ir.identifier import Identifier
 from vamos_common.types.type import (
-    Type,
-    BoolType,
     IntType,
-    UIntType,
-    NumType,
     STRING_TYPE,
     TraceType,
     SimpleType,
     UserType,
-    EventType,
+    NumType,
 )
-
 from ..spec.ir.expr import MethodCall, IfExpr, New, IsIn, Cast, CommandLineArgument
 from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Event, Continue, Break
 
@@ -35,9 +30,11 @@ class CodeGenCpp(CodeGen):
         self._gen_includes = set()
         self._std_includes = set()
         self._copy_files = set()
-        self._modules = {}
         # a set of features used by the generated code
         self._features = set()
+
+    def get_type(self, elem):
+        return self.ctx.types.get(elem)
 
     def add_include(self, name):
         self._gen_includes.add(name)
@@ -48,21 +45,8 @@ class CodeGenCpp(CodeGen):
     def add_copy_file(self, name):
         self._copy_files.add(name)
 
-    def _handle_imports(self, imports):
-        from importlib import import_module
-
-        for imp in imports:
-            name = imp.module.name
-            print(f"Importing: {name}", end=" ")
-            mod = import_module(f"vamos_sources.spec.modules.{name}")
-            print(f"-> {mod}")
-            assert name not in self._modules, name
-            self._modules[name] = mod
-
-        sys.path.pop(0)
-
     def _copy_common_files(self):
-        files = ["new_trace.h"]
+        files = ["main.cpp", "trace.h", "new_trace.h"]
         for f in files:
             if f not in self.args.overwrite_default:
                 self.copy_file(f)
@@ -90,17 +74,23 @@ class CodeGenCpp(CodeGen):
         wr(";\n")
 
     def _gen_foreach(self, stmt, wr, wr_h):
-        wr("/* FIXME: do not use reference on simple types */\n")
-        wr(f"for (auto& {stmt.value.name} : ")
+        if isinstance(self.get_type(stmt.value), SimpleType):
+            wr(f"for (/*{self.get_type(stmt.value)}*/ auto {stmt.value.name} : ")
+        else:
+            wr(f"for (/*{self.get_type(stmt.value)}*/ const auto& {stmt.value.name} : ")
         self.gen(stmt.iterable, wr, wr_h)
         wr(") {\n")
         for s in stmt.stmts:
             self.gen(s, wr, wr_h)
         wr("}\n")
 
+    def _get_trace(self, tr):
+        assert False, tr
+
     def _gen_yield(self, stmt, wr, wr_h):
         wr("{\n")
         for ev in stmt.events:
+            # trace = self._get_trace(stmt.trace)
             wr(f"{stmt.trace.name}->push(")
             self.gen(ev, wr, wr_h)
             wr(");\n")
@@ -125,7 +115,7 @@ class CodeGenCpp(CodeGen):
         self._features.add("is_in")
 
     def _gen_method_call(self, stmt, wr, wr_h):
-        mod = self._modules.get(stmt.lhs.name)
+        mod = self.ctx.get_module(stmt.lhs)
         if mod:
             mod.gen("cpp", self, stmt, wr, wr_h)
         else:
@@ -158,13 +148,17 @@ class CodeGenCpp(CodeGen):
         assert stmt.value.type(), stmt
         assert stmt.type(), stmt
 
+        val_ty = stmt.value.type()
+        ty = stmt.type()
         fun = None
-        if stmt.value.type() == STRING_TYPE:
-            ty = stmt.type()
+        if val_ty == STRING_TYPE:
             if isinstance(ty, IntType):
                 if ty.bitwidth <= 32:
                     self.add_std_include("string")
                     fun = "std::stoi"
+        elif isinstance(val_ty, NumType):
+            fun = f"reinterpret_cast<{cpp_type(ty)}>"
+
         if fun is None:
             raise NotImplementedError(f"Unhandled cast: {stmt}")
 
@@ -261,6 +255,29 @@ class CodeGenCpp(CodeGen):
         if "is_in" in self._features:
             self.input_file(fh, "partials/src-is_in.h")
 
+    def _generate_cmake(self):
+        from config import vamos_buffers_DIR  # , vamos_hyper_DIR
+
+        build_type = self.args.build_type
+        if not build_type:
+            build_type = '"Debug"' if self.args.debug else ""
+
+        self.gen_config(
+            "CMakeLists.txt.in",
+            "CMakeLists.txt",
+            {
+                "@vamos-buffers_DIR@": vamos_buffers_DIR,
+                # "@vamos-hyper_DIR@": vamos_hyper_DIR,
+                "@additional_sources@": " ".join(
+                    (basename(f) for f in self.args.cpp_files + self.args.add_gen_files)
+                ),
+                "@additional_cmake_definitions@": " ".join(
+                    (d for d in self.args.cmake_defs)
+                ),
+                "@CMAKE_BUILD_TYPE@": build_type,
+            },
+        )
+
     def generate(self, ast):
         if self.args.debug:
             with self.new_dbg_file(f"src.ast") as fl:
@@ -271,12 +288,12 @@ class CodeGenCpp(CodeGen):
 
         assert isinstance(ast, Program), ast
 
-        self._handle_imports(ast.imports)
-
         with self.new_file("src.cpp") as f:
             with self.new_file("src.h") as fh:
                 fh.write('#include "src-includes.h"\n\n')
                 fh.write('#include "events.h"\n\n')
+
+                fh.write("int source_thrd(void *data);\n\n")
 
                 self._gen_src(ast, f.write, fh.write)
                 self._src_finish(ast, f, fh)
@@ -296,6 +313,8 @@ class CodeGenCpp(CodeGen):
             wr('#include "src.h"\n\n')
             self._gen_input_stream_class(ast, wr)
             self._gen_inputs_class(ast, wr)
+
+        self._generate_cmake()
 
         self.try_clang_format_file("inputs.cpp")
         self.try_clang_format_file("src.cpp")

@@ -14,18 +14,18 @@ let t = new [Input, Output, Dummy];
 -- we could use also rand.coin()
 let U = rand.uniform(0, 1);
 
-foreach n in common.range(0, ($1).as("Int32")) {
+foreach n in common.range(0, $1 as Int32) {
   -- dbg.dbg(n);
   let x = rand.uni(0, 100);
   if x in common.range(0, 9) {
     --yield Input(pick from U) to t;
-    yield Input(U.get()) to t;
+    yield Input(U.get(), U.get()) to t;
     continue;
   }
 
   if x in (10, 19) {
     --yield Output(pick from U) to t;
-    yield Output(U.get()) to t;
+    yield Output(U.get(), U.get()) to t;
     continue;
   }
 

@@ -34,6 +34,13 @@ class Cast(Expr):
     def __repr__(self):
         return f"Cast({self.value}, {self.type()})"
 
+    @property
+    def children(self):
+        return ()
+
+    def typing_rule(self, types):
+        types.assign(self, self._type)
+
 
 #
 # class Var(Expr):
@@ -169,6 +176,9 @@ class New(Expr):
     def children(self):
         return [self.objtype]
 
+    def typing_rule(self, types):
+        types.assign(self, self.objtype)
+
 
 class IfExpr(Expr):
     "if `cond` { `true_stmts` } [else { `false_stmts` }]"
@@ -190,8 +200,14 @@ class IfExpr(Expr):
 
 
 class MethodCall(Expr):
-    def __init__(self, lhs, rhs, params):
+    """
+    Call a method `lhs`.`rhs`. A method is always associated to a module
+    and therefore there's the `lhs` parameter. `rhs` is the name of the method.
+    """
+
+    def __init__(self, decl, lhs, rhs, params):
         super().__init__(None)
+        self.decl = decl
         self.lhs = lhs
         self.rhs = rhs
         self.params = params
@@ -205,3 +221,11 @@ class MethodCall(Expr):
     @property
     def children(self):
         return self.params or ()
+
+    def typing_rule(self, types):
+        types.assign(self, self.decl.retty)
+        for pa, pf in zip(self.params, self.decl.types):
+            types.assign(pa, pf)
+
+        if self.decl.typing_rule:
+            self.decl.typing_rule(self, types)

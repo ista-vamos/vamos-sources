@@ -1,5 +1,9 @@
+from importlib import import_module
+
 from lark import Transformer
 from lark.visitors import merge_transformers
+
+from vamos_common.parser.ast import visit_ast
 from vamos_common.parser.context import Context
 from vamos_common.spec.ir.constant import Constant
 from vamos_common.spec.ir.decls import DataField, EventDecl
@@ -16,7 +20,6 @@ from vamos_common.types.type import (
     StringType,
     TupleType,
 )
-
 from ..ir.expr import (
     BoolExpr,
     New,
@@ -59,7 +62,8 @@ class BaseTransformer(Transformer):
         return Constant(items[0][1:-1], StringType())
 
     def constant_number(self, items):
-        return Constant(int(items[0]), NumType())
+        ty = items[1] if len(items) > 1 else NumType()
+        return Constant(int(items[0]), ty)
 
     def constant(self, items):
         assert len(items) == 1
@@ -205,7 +209,7 @@ class ProcessAST(BaseTransformer):
             else:
                 assert item.data == "name", item
                 params.append(item.children[0])
-        return MethodCall(lhs, method, params)
+        return MethodCall(self.ctx.get_method(lhs, method), lhs, method, params)
 
     def cast(self, items):
         assert len(items) == 2
@@ -263,7 +267,14 @@ class ProcessAST(BaseTransformer):
         return items
 
     def importmod(self, items):
-        return Import(items[0].children[0])
+        name = items[0].children[0]
+        assert isinstance(name, Identifier), name
+
+        print(f"Importing: {name.name}", end=" ")
+        mod = import_module(f"vamos_sources.spec.modules.{name.name}")
+        print(f"-> {mod}")
+        self.ctx.add_module(name, mod)
+        return Import(name)
 
     def eventsspec(self, items):
         if items[0] is not None:
@@ -305,7 +316,7 @@ class ProcessAST(BaseTransformer):
                 assert p.data == "name", p
                 params.append(p.children[0])
         assert isinstance(name, Identifier), name
-        return Event(name.name, params)
+        return Event(self.ctx.get_eventdecl(name), name.name, params)
 
     def specarg(self, items):
         return CommandLineArgument(items[0])
@@ -342,17 +353,6 @@ class ProcessAST(BaseTransformer):
         return items
 
 
-def visit_ast(node, lvl, fn, *args):
-    fn(lvl, node, *args)
-    if node is None:
-        return
-
-    if not hasattr(node, "children"):
-        return
-    for ch in node.children:
-        visit_ast(ch, lvl + 1, fn, args)
-
-
 def prnode(lvl, node, *args):
     print(" " * lvl * 2, node)
 
@@ -373,5 +373,13 @@ def transform_ast(lark_ast, ctx=None):
     ast = T.transform(lark_ast)
 
     visit_ast(ast, 1, prnode)
+
+    from vamos_common.types.typecheck import TypeChecker
+
+    tc = TypeChecker(ctx)
+    tc.typecheck(ast)
+    for i, ty in tc.types().items():
+        print("TY:", i, "->", ty)
+    ctx.types = tc.types()
 
     return ast, ctx

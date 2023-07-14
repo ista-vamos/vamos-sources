@@ -1,7 +1,7 @@
 from vamos_common.codegen.lang.cpp import cpp_type
-from vamos_common.types.type import IntType, NumType, ITERATOR_TYPE
+from vamos_common.types.type import IntType, NumType, IteratorType
 from vamos_sources.interpreter.iterators import FiniteIterator
-from vamos_sources.interpreter.method import Method
+from .._method import Method
 from vamos_sources.spec.ir.expr import MethodCall
 
 from .._common import gen_params
@@ -15,7 +15,29 @@ def range_m(_, params):
     return FiniteIterator(range(params[0].value, params[1].value), IntType(64))
 
 
-METHODS = {"range": Method("range", [NumType(), NumType()], ITERATOR_TYPE, range_m)}
+def range_typing(methodcall, types):
+    """
+    Type restrictions for the `range` method -- the input parameters should have the same type
+    which is the same as the return type.
+    """
+    params = methodcall.params
+    types.dump()
+
+    types.assign(params[0], types.get(params[1]))
+    types.assign(params[1], types.get(params[0]))
+    types.assign(methodcall, IteratorType(types.get(params[0])))
+    types.assign(methodcall, IteratorType(types.get(params[1])))
+
+    retty = types.get(methodcall)
+    types.assign(params[0], retty.elem_ty())
+    types.assign(params[1], retty.elem_ty())
+
+
+METHODS = {
+    "range": Method(
+        "range", [NumType(), NumType()], IteratorType(NumType()), range_m, range_typing
+    )
+}
 
 
 def gen(lang, codegen, stmt, wr, wr_h):

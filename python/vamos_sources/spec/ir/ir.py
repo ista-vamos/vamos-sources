@@ -1,5 +1,5 @@
 from vamos_common.spec.ir.element import Element
-from vamos_common.types.type import EventType
+from vamos_common.types.type import EventType, TraceType, IteratorType
 
 
 class Program(Element):
@@ -18,6 +18,9 @@ class Program(Element):
     @property
     def children(self):
         return self.statements
+
+    def typing_rule(self, _):
+        pass
 
 
 class Statement(Element):
@@ -76,6 +79,9 @@ class Yield(Statement):
         super().__init__()
         self.events = events
         self.trace = trace
+        # this is the type of trace required by this Yield,
+        # it is not the real type of the trace
+        self._assumed_trace_type = TraceType([ev.type() for ev in self.events])
 
     def __repr__(self):
         return f"Yield({self.events}, {self.trace})"
@@ -83,6 +89,9 @@ class Yield(Statement):
     @property
     def children(self):
         return self.events + [self.trace]
+
+    def typing_rule(self, types):
+        types.assign(self.trace, self._assumed_trace_type)
 
 
 class Let(Statement):
@@ -101,7 +110,10 @@ class Let(Statement):
 
     @property
     def children(self):
-        return ()
+        return [self.name, self.obj]
+
+    def typing_rule(self, types):
+        types.assign(self.name, types.get(self.obj))
 
 
 class ForEach(Statement):
@@ -124,6 +136,17 @@ class ForEach(Statement):
     @property
     def children(self):
         return self.stmts
+
+    def typing_rule(self, types):
+        types.visit(self.iterable)
+        iterty = types.get(self.iterable)
+        if iterty is not None:
+            assert isinstance(iterty, IteratorType), iterty
+            types.assign(self.value, iterty.elem_ty())
+            val_ty = types.get(self.value)
+            if val_ty:
+                if types.assign(self.iterable, IteratorType(val_ty)):
+                    types.visit(self.iterable)
 
 
 class Continue(Statement):
@@ -159,11 +182,14 @@ class OutputDecl(Statement):
 
 
 class Event(Element):
-    def __init__(self, name, params):
+    def __init__(self, decl, name, params):
         assert isinstance(name, str), name
         super().__init__(EventType(name))
+        self.decl = decl
         self.name = name
         self.params = params
+
+        assert decl is None or decl.name.name == name, (decl, name)
 
     def __repr__(self):
         return f"Event({self.name}, {self.params})"
@@ -171,3 +197,8 @@ class Event(Element):
     @property
     def children(self):
         return self.params or ()
+
+    def typing_rule(self, types):
+        types.assign(self, self.type())
+        for param, field in zip(self.params, self.decl.fields):
+            types.assign(param, field.type())

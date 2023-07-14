@@ -1,17 +1,15 @@
-import argparse
-import os
 import sys
-from multiprocessing import Process
 from os import readlink
 from os.path import islink, dirname, abspath
 
-from cmd import parse_arguments
+from _cmd import parse_arguments
 
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
 sys.path.insert(0, abspath(f"{self_path}/../.."))
 
 sys.path.insert(0, abspath(f"{self_path}/../../.."))
 from config import vamos_common_PYTHONPATH
+
 sys.path.pop(0)
 
 sys.path.append(vamos_common_PYTHONPATH)
@@ -19,14 +17,8 @@ sys.path.append(vamos_common_PYTHONPATH)
 from vamos_sources.codegen.codegencpp import CodeGenCpp
 from vamos_sources.spec.parser.parser import Parser
 
-
-def compile(program, inp, cmdargs):
-    print("module name:", __name__)
-    print("Parent process:", os.getppid())
-    print("Interpreter PID:", os.getpid())
-
-    I = Interpreter(program, inp, cmdargs)
-    I.run()
+from vamos_common.codegen.events import CodeGenCpp as EventsCodeGen
+from vamos_common.codegen.traces import CodeGenCpp as TracesCodeGen
 
 
 def main(cmdargs):
@@ -45,6 +37,15 @@ def main(cmdargs):
         codegen = CodeGenCpp(cmdargs, ctx)
         codegen.generate(ast)
         ctx.dump()
+
+        cmdargs.out_dir_overwrite = False
+        assert cmdargs.out_dir_overwrite is False
+        events_codegen = EventsCodeGen(cmdargs, ctx)
+        events_codegen.generate(ctx.alphabet())
+
+        assert cmdargs.out_dir_overwrite is False
+        traces_codegen = TracesCodeGen(cmdargs, ctx)
+        traces_codegen.generate(ctx.tracetypes, ctx.alphabet())
 
 
 # for p in processes:

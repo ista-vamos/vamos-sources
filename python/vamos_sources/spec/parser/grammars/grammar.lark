@@ -54,14 +54,14 @@ newexpr: "new" type
 methodcall: (name | expr) "." name "(" [params] ")"
 params: (name | expr) ("," (name | expr))*
 
-constant: NUMBER -> constant_number
+constant: NUMBER typeannot? -> constant_number
          | ESCAPED_STRING -> constant_string
          | constant_tuple
 tuple: "(" expr ("," expr)+  ")"
 constant_tuple: "(" constant ("," constant)+  ")"
 value: NAME
 
-//%import types.typeannot
+%import types.typeannot
 %import types.type
 %import events.eventdecl_imp -> eventdecl
 %import comm.name

@@ -1,5 +1,5 @@
 from vamos_common.spec.ir.constant import Constant
-from vamos_common.types.type import ITERATOR_TYPE
+from vamos_common.types.type import IteratorType
 
 
 class Iterator:
@@ -7,11 +7,15 @@ class Iterator:
     Base class for iterators over iterable values.
     """
 
+    def __init__(self, elem_ty):
+        self._elem_ty = elem_ty
+        self._type = IteratorType(self._elem_ty)
+
     def iterator(self):
         return self
 
     def type(self):
-        return ITERATOR_TYPE
+        return self._type
 
 
 class ListIterator(Iterator):
@@ -82,6 +86,8 @@ class FiniteIterator(Iterator):
 
 class LazyIterator(Iterator):
     def __init__(self, vals, ty):
+        super().__init__(ty)
+
         "ty: _type of the constants of each value"
         self._const_ty = ty
         self._last_value = None
