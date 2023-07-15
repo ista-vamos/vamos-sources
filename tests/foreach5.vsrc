@@ -1,0 +1,17 @@
+import common
+import dbg
+
+Event Num { x: Int32 }
+Event Num64 { x: Int64 }
+
+let H0 = new {[Num], [Num64]};
+let t = new [Num] to stdout;
+let t2 = new [Num64] to stdout;
+--let t3 = new [Num64] to stdout, H0;
+
+foreach n in common.range(1, 101) {
+  yield Num(n) to t;
+  yield Num(2*(n + 1)) to t;
+  yield Num64(n as Int64) to t2;
+}
+
