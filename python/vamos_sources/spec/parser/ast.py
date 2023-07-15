@@ -288,7 +288,7 @@ class ProcessAST(BaseTransformer):
         assert isinstance(name, Identifier), name
 
         print(f"Importing: {name.name}", end=" ")
-        mod = import_module(f"vamos_sources.spec.modules.{name.name}")
+        mod = import_module(f"vamos_sources.modules.{name.name}")
         print(f"-> {mod}")
         self.ctx.add_module(name, mod)
         return Import(name)
