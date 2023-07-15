@@ -38,12 +38,12 @@ template <typename EventTy> class Trace : public TraceBase {
 public:
   Trace(size_t id, size_t type) : TraceBase(id, type) {}
 
-  void push(const EventTy &e) {
+  void push(EventTy &&e) {
     _events.push_back(e);
     assert(e.id() == 0 && "Event has set ID");
     _events.back().set_id(_events.size());
   };
-  void push(const EventTy *e) { push(*e); }
+  void push(EventTy *e) { push(std::move(*e)); }
 
   Event *get(size_t idx) { return &_events[idx]; }
   const Event *get(size_t idx) const { return &_events[idx]; }

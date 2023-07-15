@@ -1,0 +1,11 @@
+import file
+
+Event Line { text: String }
+
+let t0 = new [Line] to stdout;
+let f = file.reader("lines1.txt");
+
+foreach line in f.lines() {
+    yield Line(line) to t0;
+}
+
