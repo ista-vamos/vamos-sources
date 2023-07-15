@@ -1,4 +1,4 @@
-from vamos_common.types.type import SimpleType
+from vamos_common.types.type import SimpleType, StringType
 
 from .base import CodeGenBase
 from ...spec.ir.ir import Let, ForEach, Yield, Continue, Break
@@ -27,7 +27,10 @@ class CodeGenStmt(CodeGenBase):
             raise NotImplementedError(f"Codegen not implemented for statement {stmt}")
 
     def _gen_let(self, stmt, wr, wr_h):
-        wr(f"auto {stmt.name.name} = ")
+        if isinstance(self.get_type(stmt), StringType):
+            wr(f"auto& {stmt.name.name} = ")
+        else:
+            wr(f"auto {stmt.name.name} = ")
         # self._gen(stmt.name, wr)
         # wr(" = ")
         self.gen(stmt.obj, wr, wr_h)

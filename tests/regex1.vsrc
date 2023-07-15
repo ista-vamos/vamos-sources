@@ -1,11 +1,10 @@
 import file
 import regex
-import dbg
 
 Event Input, Output { x: UInt32 }
 
-let t0 = new [Input];
-let t1 = new [Output];
+let t0 = new [Input] to stdout;
+let t1 = new [Output] to stdout;
 
 let f = file.reader("regex1.txt");
 
@@ -15,8 +14,8 @@ foreach line in f.lines() {
       let s1 = r.get(1);
       let s2 = r.get(2);
 
-      yield Input(s1) to t0;
-      yield Output(s2) to t1;
+      yield Input(s1 as UInt32) to t0;
+      yield Output(s2 as UInt32) to t1;
     }
 }
 

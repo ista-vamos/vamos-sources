@@ -5,8 +5,10 @@ from vamos_common.types.type import (
     UserType,
     SimpleType,
     IntType,
+    UIntType,
     STRING_TYPE,
     NumType,
+    StringType,
 )
 
 from .stmt import CodeGenStmt
@@ -18,6 +20,7 @@ from ...spec.ir.expr import (
     Cast,
     CommandLineArgument,
     BinaryOp,
+    Event,
 )
 
 
@@ -39,15 +42,23 @@ class CodeGenExpr(CodeGenStmt):
         elif isinstance(stmt, IfExpr):
             self._gen_if(stmt, wr, wr_h)
         elif isinstance(stmt, Constant):
-            wr(str(stmt.value))
+            self._gen_constant(stmt, wr)
         elif isinstance(stmt, Cast):
             self._gen_cast(stmt, wr, wr_h)
+        elif isinstance(stmt, Event):
+            self._gen_event(stmt, wr, wr_h)
         elif isinstance(stmt, CommandLineArgument):
             self._gen_cmdarg(stmt, wr, wr_h)
         elif isinstance(stmt, BinaryOp):
             self._gen_bin_op(stmt, wr, wr_h)
         else:
             raise NotImplementedError(f"Codegen not implemented for expr {stmt}")
+
+    def _gen_constant(self, stmt, wr):
+        if isinstance(stmt.type(), NumType):
+            wr(str(stmt.value))
+        elif isinstance(stmt.type(), StringType):
+            wr(f'"{stmt.value}"')
 
     def _gen_new(self, stmt, wr):
         ty = stmt.objtype
@@ -104,7 +115,7 @@ class CodeGenExpr(CodeGenStmt):
     def _gen_cast(self, stmt, wr, wr_h):
         assert stmt.type(), (stmt, stmt.type())
 
-        val_ty = stmt.value.type()
+        val_ty = self.get_type(stmt.value)
         ty = stmt.type()
         fun = None
         if val_ty is None:
@@ -116,11 +127,15 @@ class CodeGenExpr(CodeGenStmt):
                 if ty.bitwidth <= 32:
                     self.add_std_include("string")
                     fun = "std::stoi"
+            if isinstance(ty, UIntType):
+                if ty.bitwidth <= 64:
+                    self.add_std_include("string")
+                    fun = "std::stoul"
         elif isinstance(val_ty, NumType):
             fun = f"reinterpret_cast<{cpp_type(ty)}>"
 
         if fun is None:
-            raise NotImplementedError(f"Unhandled cast: {stmt}")
+            raise NotImplementedError(f"Unhandled cast: {val_ty} as {ty}")
 
         wr(fun)
         wr("(")

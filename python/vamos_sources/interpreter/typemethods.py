@@ -1,4 +1,4 @@
-from spec.modules._method import Method
+from interpreter.method import Method
 from vamos_common.spec.ir.constant import Constant
 from vamos_common.types.type import (
     StringType,

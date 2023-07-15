@@ -223,7 +223,7 @@ class ProcessAST(BaseTransformer):
             else:
                 assert item.data == "name", item
                 params.append(item.children[0])
-        return MethodCall(self.ctx.get_method(lhs, method), lhs, method, params)
+        return MethodCall(lhs, method, params)
 
     def cast(self, items):
         assert len(items) == 2
@@ -397,6 +397,6 @@ def transform_ast(lark_ast, ctx=None):
     tc.typecheck(ast)
     for i, ty in tc.types().items():
         print("TY:", i, "->", ty)
-    ctx.types = tc.types()
+    ctx.add_typecheck_results(tc)
 
     return ast, ctx

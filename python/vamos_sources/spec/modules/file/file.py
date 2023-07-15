@@ -1,16 +1,22 @@
+from os.path import abspath, dirname, join as pathjoin
+
 from vamos_common.spec.ir.constant import Constant
+from vamos_common.types.methods import MethodHeader
 from vamos_common.types.type import (
     IterableType,
+    IteratorType,
     StringType,
     OutputType,
     STRING_TYPE,
-    ITERATOR_TYPE,
     ObjectType,
 )
 from vamos_sources.interpreter.iterators import FiniteIterator
 from vamos_sources.interpreter.method import Method
 from vamos_sources.interpreter.value import Value, Trace
-from vamos_sources.spec.ir.ir import Event
+from vamos_sources.spec.ir.expr import Event
+from vamos_sources.spec.ir.expr import MethodCall
+
+header_lines = MethodHeader("lines", [], IteratorType(STRING_TYPE))
 
 
 class FileReader(Value):
@@ -28,9 +34,7 @@ class FileReader(Value):
 
     def get_method(self, name):
         if name == "lines":
-            return Method(
-                "lines", [], ITERATOR_TYPE, lambda state, params: self.lines()
-            )
+            return Method(header_lines, lambda state, params: self.lines())
 
         raise RuntimeError(f"Invalid method: {name}")
 
@@ -79,7 +83,37 @@ def writer(_, params):
     return FileWriter(params[0])
 
 
+class FileReaderTy(ObjectType):
+    methods = {"lines": header_lines}
+
+
 METHODS = {
-    "reader": Method("file.reader", [STRING_TYPE], ObjectType(), reader),
-    "writer": Method("file.writer", [STRING_TYPE], ObjectType(), writer),
+    "reader": Method(
+        MethodHeader("file.reader", [STRING_TYPE], FileReaderTy()), reader
+    ),
+    "writer": Method(MethodHeader("file.writer", [STRING_TYPE], ObjectType()), writer),
 }
+
+
+def gen(lang, codegen, stmt, wr, wr_h):
+    assert lang == "cpp"
+    gen_cpp(codegen, stmt, wr, wr_h)
+
+
+def gen_cpp(codegen, stmt, wr, wr_h):
+    if isinstance(stmt, MethodCall):
+        if stmt.rhs.name == "reader":
+            codegen.add_include("file-reader.h")
+            codegen.add_copy_file(
+                abspath(pathjoin(dirname(__file__), "codegen/cpp/file-reader.h"))
+            )
+            wr("FileReader(")
+            for n, p in enumerate(stmt.params):
+                if n > 0:
+                    wr(", ")
+                codegen.gen(p, wr, wr_h)
+            wr(")")
+        else:
+            raise NotImplementedError(f"Unknown method: {stmt.rhs.name}")
+    else:
+        raise NotImplementedError(f"Unknown stmt: {stmt}")

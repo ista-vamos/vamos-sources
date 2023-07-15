@@ -180,6 +180,14 @@ class IfExpr(Expr):
     def children(self):
         return self.true_stmts.statements + (self.false_stmts or [])
 
+    def typing_rule(self, types):
+        types.assign(self.cond, BOOL_TYPE)
+        types.visit(self.cond)
+
+    # types.assign(self, types.get(self.true_stmts[-1]))
+    # if self.false_stmts:
+    #    types.assign(self, types.get(self.false_stmts[-1]))
+
 
 class MethodCall(Expr):
     """
@@ -187,9 +195,8 @@ class MethodCall(Expr):
     and therefore there's the `lhs` parameter. `rhs` is the name of the method.
     """
 
-    def __init__(self, decl, lhs, rhs, params):
+    def __init__(self, lhs, rhs, params, decl=None):
         super().__init__(None)
-        self.decl = decl
         self.lhs = lhs
         self.rhs = rhs
         self.params = params
@@ -205,12 +212,14 @@ class MethodCall(Expr):
         return self.params or ()
 
     def typing_rule(self, types):
-        types.assign(self, self.decl.retty)
-        for pa, pf in zip(self.params, self.decl.types):
-            types.assign(pa, pf)
+        header = types.get_method(self.lhs, self.rhs)
+        if header:
+            types.assign(self, header.retty)
+            for pa, pf in zip(self.params, header.types):
+                types.assign(pa, pf)
 
-        if self.decl.typing_rule:
-            self.decl.typing_rule(self, types)
+            if header.typing_rule:
+                header.typing_rule(self, types)
 
 
 class Event(Expr):

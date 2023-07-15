@@ -3,7 +3,7 @@ from os import readlink
 from os.path import abspath, dirname, islink
 
 from .iterators import ListIterator, Iterator
-from spec.modules._method import Method
+from .method import Method
 from .module import Module
 from .state import State
 from .typemethods import initialize_type_methods

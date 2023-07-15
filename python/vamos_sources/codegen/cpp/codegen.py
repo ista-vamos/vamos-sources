@@ -19,7 +19,7 @@ class CodeGenCpp(CodeGenExpr):
         self.add_copy_file("main.cpp")
         self.add_copy_file("trace.h")
         self.add_copy_file("new_trace.h")
-        self.add_copy_file("stdout_trace.cpp")
+        self.add_copy_file("stdout_trace.h")
 
         self._copy_vamos_common_files.add("cpp/event_and_id.h")
 
