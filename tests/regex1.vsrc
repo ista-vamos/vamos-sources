@@ -1,10 +1,9 @@
 import file
 import regex
 
-Event Input, Output { x: UInt32 }
+Event Match  { l: UInt32, m: String }
 
-let t0 = new [Input] to stdout;
-let t1 = new [Output] to stdout;
+let t = new [Match] to stdout;
 
 let f = file.reader("regex1.txt");
 
@@ -14,8 +13,7 @@ foreach line in f.lines() {
       let s1 = r.get(1);
       let s2 = r.get(2);
 
-      yield Input(s1 as UInt32) to t0;
-      yield Output(s2 as UInt32) to t1;
+      yield Match(s1 as UInt32, s2) to t;
     }
 }
 
