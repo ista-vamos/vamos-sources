@@ -14,7 +14,7 @@ sys.path.pop(0)
 
 sys.path.append(vamos_common_PYTHONPATH)
 
-from vamos_sources.codegen.codegencpp import CodeGenCpp
+from vamos_sources.codegen.cpp.codegen import CodeGenCpp
 from vamos_sources.spec.parser.parser import Parser
 
 from vamos_common.codegen.events import CodeGenCpp as EventsCodeGen

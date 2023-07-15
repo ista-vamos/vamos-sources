@@ -14,7 +14,7 @@ from vamos_common.types.type import (
     UserType,
     NumType,
 )
-from ..spec.ir.expr import (
+from ...spec.ir.expr import (
     MethodCall,
     IfExpr,
     New,
@@ -24,7 +24,7 @@ from ..spec.ir.expr import (
     Event,
     BinaryOp,
 )
-from ..spec.ir.ir import Program, Statement, Let, ForEach, Yield, Continue, Break
+from ...spec.ir.ir import Program, Statement, Let, ForEach, Yield, Continue, Break
 
 
 class CodeGenCpp(CodeGen):
@@ -34,7 +34,7 @@ class CodeGenCpp(CodeGen):
         self_path = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
-        self.templates_path = pathjoin(self_path, "templates/cpp")
+        self.templates_path = pathjoin(self_path, "templates/")
         self._gen_includes = set()
         self._std_includes = set()
         self._cmake_defs = []
