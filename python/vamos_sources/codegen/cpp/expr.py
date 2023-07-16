@@ -144,6 +144,10 @@ class CodeGenExpr(CodeGenStmt):
 
     def _gen_cmdarg(self, stmt, wr, wr_h):
         assert int(stmt.num[1:]), stmt
+        self.add_include("command_line_arg.h")
+        self.add_copy_vamos_common_file("cpp/command_line_arg.h")
+        self.add_copy_vamos_common_file("cpp/command_line_arg.cpp")
+        self.add_cmake_source("command_line_arg.cpp")
         wr(f"__command_line_arg(data, {stmt.num[1:]})")
 
     def _gen_bin_op(self, stmt, wr, wr_h):

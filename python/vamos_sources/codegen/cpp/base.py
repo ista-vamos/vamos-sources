@@ -23,12 +23,16 @@ class CodeGenBase(CodeGen):
         self._gen_includes = set()
         self._std_includes = set()
         self._cmake_defs = []
+        self._cmake_sources = []
         self._copy_files = set()
         self._copy_files_no_overwrite = set()
         # files from vamos-comon to copy
         self._copy_vamos_common_files = set()
         # a set of features used by the generated code
         self._features = set()
+
+    def add_cmake_source(self, f):
+        self._cmake_sources.append(f)
 
     def get_type(self, elem):
         return self.ctx.get_type(elem)
@@ -57,12 +61,20 @@ class CodeGenBase(CodeGen):
         """
         self._copy_files.add(name)
 
+    def add_copy_vamos_common_file(self, name):
+        """
+        Add a file from vamos-common to copy to the output dir
+        """
+        self._copy_vamos_common_files.add(name)
+
     def copy_files_no_overwrite(self):
         for f in self._copy_files_no_overwrite:
+            print("COPY:", f)
             if f not in self.args.overwrite_default:
                 self.copy_file(f)
 
         for f in self._copy_vamos_common_files:
+            print("COPY vamos-common:", f)
             if f not in self.args.overwrite_default:
                 self.copy_common_file(f)
 

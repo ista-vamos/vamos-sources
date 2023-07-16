@@ -1,6 +1,11 @@
 from vamos_common.spec.ir.expr import Expr
-from vamos_common.types.type import EventType
-from vamos_common.types.type import STRING_TYPE, BOOL_TYPE, OBJECT_TYPE
+from vamos_common.types.type import (
+    EventType,
+    STRING_TYPE,
+    BOOL_TYPE,
+    OBJECT_TYPE,
+    ITERABLE_TYPE,
+)
 
 
 class TupleExpr(Expr):
@@ -55,6 +60,9 @@ class CommandLineArgument(Expr):
     def children(self):
         return ()
 
+    def typing_rule(self, types):
+        types.assign(self, STRING_TYPE)
+
 
 class BoolExpr(Expr):
     def __init__(self):
@@ -63,6 +71,9 @@ class BoolExpr(Expr):
     @property
     def children(self):
         return ()
+
+    def typing_rule(self, types):
+        types.assign(self, BOOL_TYPE)
 
 
 class And(BoolExpr):
@@ -84,6 +95,11 @@ class And(BoolExpr):
     def children(self):
         return [self.lhs, self.rhs]
 
+    def typing_rule(self, types):
+        types.assign(self, BOOL_TYPE)
+        types.assign(self.lhs, BOOL_TYPE)
+        types.assign(self.rhs, BOOL_TYPE)
+
 
 class Or(BoolExpr):
     def __init__(self, lhs, rhs):
@@ -103,6 +119,11 @@ class Or(BoolExpr):
     @property
     def children(self):
         return [self.lhs, self.rhs]
+
+    def typing_rule(self, types):
+        types.assign(self, BOOL_TYPE)
+        types.assign(self.lhs, BOOL_TYPE)
+        types.assign(self.rhs, BOOL_TYPE)
 
 
 class CompareExpr(BoolExpr):
@@ -125,6 +146,11 @@ class CompareExpr(BoolExpr):
     def children(self):
         return [self.lhs, self.rhs]
 
+    def typing_rule(self, types):
+        types.assign(self, BOOL_TYPE)
+        types.assign(self.lhs, types.get(self.rhs))
+        types.assign(self.rhs, types.get(self.lhs))
+
 
 class IsIn(BoolExpr):
     def __init__(self, lhs, rhs):
@@ -141,6 +167,11 @@ class IsIn(BoolExpr):
     @property
     def children(self):
         return [self.lhs, self.rhs]
+
+    def typing_rule(self, types):
+        types.assign(self, BOOL_TYPE)
+        types.assign(self.lhs, self.rhs.iterator_type().elem_type())
+        types.assign(self.rhs, ITERABLE_TYPE)
 
 
 class New(Expr):

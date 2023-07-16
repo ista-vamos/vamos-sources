@@ -21,7 +21,8 @@ class CodeGenCpp(CodeGenExpr):
         self.add_copy_file("new_trace.h")
         self.add_copy_file("stdout_trace.h")
 
-        self._copy_vamos_common_files.add("cpp/event_and_id.h")
+        self.add_copy_vamos_common_file("cpp/event_and_id.h")
+        self.add_copy_vamos_common_file("cpp/program_data.h")
 
     def _gen_input_stream_class(self, ast, wr):
         wr("class InputStream {\n")
@@ -64,7 +65,8 @@ class CodeGenCpp(CodeGenExpr):
         wr('#include "stdout_trace.h"\n')
         wr('#include "traces.h"\n')
         wr('#include "events.h"\n\n')
-        wr('#include "src.h"\n\n')
+        wr('#include "src.h"\n')
+        wr('#include "src-includes.h"\n\n')
 
         wr("void source_thrd(void *data) {\n")
         for stmt in ast.children:
@@ -94,7 +96,12 @@ class CodeGenCpp(CodeGenExpr):
                 "@vamos-buffers_DIR@": vamos_buffers_DIR,
                 # "@vamos-hyper_DIR@": vamos_hyper_DIR,
                 "@additional_sources@": " ".join(
-                    (basename(f) for f in self.args.cpp_files + self.args.add_gen_files)
+                    (
+                        basename(f)
+                        for f in self.args.cpp_files
+                        + self.args.add_gen_files
+                        + self._cmake_sources
+                    )
                 ),
                 "@additional_cmake_definitions@": " ".join(
                     (d for d in self.args.cmake_defs + self._cmake_defs)
@@ -108,7 +115,6 @@ class CodeGenCpp(CodeGenExpr):
             with self.new_dbg_file(f"src.ast") as fl:
                 fl.write(str(ast))
 
-        self.copy_files_no_overwrite()
         print(ast)
 
         assert isinstance(ast, Program), ast
@@ -130,8 +136,6 @@ class CodeGenCpp(CodeGenExpr):
             for inc in self._gen_includes:
                 write(f'#include "{inc}"\n')
 
-        self.copy_files()
-
         with self.new_file("inputs.cpp") as f:
             wr = f.write
 
@@ -139,6 +143,8 @@ class CodeGenCpp(CodeGenExpr):
             self._gen_input_stream_class(ast, wr)
             self._gen_inputs_class(ast, wr)
 
+        self.copy_files()
+        self.copy_files_no_overwrite()
         self._generate_cmake()
 
         self.try_clang_format_file("inputs.cpp")
