@@ -4,7 +4,6 @@ from vamos_common.types.type import (
     STRING_TYPE,
     BOOL_TYPE,
     OBJECT_TYPE,
-    ITERABLE_TYPE,
 )
 
 
@@ -171,7 +170,9 @@ class IsIn(BoolExpr):
     def typing_rule(self, types):
         types.assign(self, BOOL_TYPE)
         types.assign(self.lhs, self.rhs.iterator_type().elem_type())
-        types.assign(self.rhs, ITERABLE_TYPE)
+        lhs_ty = types.get(self.lhs)
+        if lhs_ty:
+            types.assign(self.rhs, IterableType(IteratorType(lhs_ty)))
 
 
 class New(Expr):

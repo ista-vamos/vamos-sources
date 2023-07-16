@@ -6,7 +6,6 @@ from vamos_common.types.type import (
     IterableType,
     IteratorType,
     StringType,
-    OutputType,
     STRING_TYPE,
     ObjectType,
 )
@@ -47,7 +46,7 @@ class FileWriter(Value):
         assert isinstance(fl, Constant), fl
         assert fl.type() == STRING_TYPE, fl
 
-        super().__init__("<FileWriter>", OutputType())
+        super().__init__("<FileWriter>", ObjectType())
         self.file = fl.value
         self.fobj = open(self.file, "w")
 
