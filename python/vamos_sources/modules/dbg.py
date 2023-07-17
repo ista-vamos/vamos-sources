@@ -1,14 +1,16 @@
 from sys import stderr
 
+from vamos_common.types.methods import MethodHeader
+from vamos_sources.interpreter.method import Method
 from vamos_sources.spec.ir.expr import MethodCall
-from vamos_sources.spec.modules._method import Method
 
 
 def dbg(_, params):
     print("[dbg]", ", ".join(map(str, params)), file=stderr)
 
 
-METHODS = {"dbg": Method("dbg", [], None, dbg)}
+header_dbg = MethodHeader("dbg", [], None)
+METHODS = {"dbg": Method(header_dbg, dbg)}
 
 
 def gen(lang, codegen, stmt, wr, wr_h):

@@ -1,12 +1,13 @@
+from os.path import abspath, dirname, join as pathjoin
+
 from vamos_common.codegen.lang.cpp import cpp_type
+from vamos_common.types.methods import MethodHeader
 from vamos_common.types.type import IntType, NumType, IteratorType
 from vamos_sources.interpreter.iterators import FiniteIterator
 from vamos_sources.interpreter.method import Method
 from vamos_sources.spec.ir.expr import MethodCall
 
 from .._common import gen_params
-
-from os.path import abspath, dirname, join as pathjoin
 
 
 def range_m(_, params):
@@ -33,11 +34,11 @@ def range_typing(methodcall, types):
     types.assign(params[1], retty.elem_ty())
 
 
-METHODS = {
-    "range": Method(
-        "range", [NumType(), NumType()], IteratorType(NumType()), range_m, range_typing
-    )
-}
+header_range = MethodHeader(
+    "common.range", [NumType(), NumType()], IteratorType(NumType()), range_typing
+)
+
+METHODS = {"range": Method(header_range, range_m)}
 
 
 def gen(lang, codegen, stmt, wr, wr_h):
