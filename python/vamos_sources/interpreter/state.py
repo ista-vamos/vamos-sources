@@ -1,5 +1,6 @@
-from .value import Value
 from vamos_common.spec.ir.constant import Constant
+
+from .value import Value
 
 
 class State:

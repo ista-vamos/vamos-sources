@@ -20,6 +20,7 @@ class Iterator:
 
 class ListIterator(Iterator):
     def __init__(self, val):
+        super().__init__(val.type())
         self._val = val
         self._pos = 0
 
@@ -32,25 +33,6 @@ class ListIterator(Iterator):
         return val
 
 
-class TupleIterator(Iterator):
-    def __init__(self, val):
-        self._vals = val.value()
-        self._pos = 0
-
-    def has_next(self):
-        return self._pos < len(self._vals)
-
-    def is_done(self):
-        return not self.has_next()
-
-    def next(self):
-        p = self._pos
-        val = self._vals[p]
-        self._pos += 1
-
-        assert isinstance(val, Constant), val
-        return val
-
 
 class FiniteIterator(Iterator):
     """
@@ -61,6 +43,8 @@ class FiniteIterator(Iterator):
 
     def __init__(self, vals, ty):
         "ty: _type of the constants of each value"
+
+        super().__init__(ty)
         self._const_ty = ty
         self._last_value = None
         self._done = False
@@ -86,9 +70,10 @@ class FiniteIterator(Iterator):
 
 class LazyIterator(Iterator):
     def __init__(self, vals, ty):
+        "ty: _type of the constants of each value"
+
         super().__init__(ty)
 
-        "ty: _type of the constants of each value"
         self._const_ty = ty
         self._last_value = None
         self._done = False

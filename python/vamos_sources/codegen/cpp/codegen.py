@@ -18,6 +18,7 @@ class CodeGenCpp(CodeGenExpr):
 
         self.add_copy_file("main.cpp")
         self.add_copy_file("trace.h")
+        self.add_copy_file("htrace.h")
         self.add_copy_file("new_trace.h")
         self.add_copy_file("stdout_trace.h")
 
@@ -112,7 +113,7 @@ class CodeGenCpp(CodeGenExpr):
 
     def generate(self, ast):
         if self.args.debug:
-            with self.new_dbg_file(f"src.ast") as fl:
+            with self.new_dbg_file("src.ast") as fl:
                 fl.write(str(ast))
 
         print(ast)

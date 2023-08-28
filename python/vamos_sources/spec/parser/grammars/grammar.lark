@@ -50,9 +50,9 @@ arithexpr.2:  expr "+" expr   -> add
            | expr "/" expr  -> div
            | "-" expr       -> unary_minus
 
-expr: boolexpr | arithexpr | newexpr | methodcall | specarg | cast | constant | event | name | "(" expr ")"
+expr: boolexpr | arithexpr | newexpr | methodcall | cmdarg | cast | constant | event | name | "(" expr ")"
 
-specarg: /\$\d+/
+cmdarg: /\$\d+/
 iterable: name | methodcall
 
 newexpr: "new" type ("to" output_to ("," output_to)*)?

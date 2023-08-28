@@ -45,7 +45,7 @@ def main(cmdargs):
 
         assert cmdargs.out_dir_overwrite is False
         traces_codegen = TracesCodeGen(cmdargs, ctx)
-        traces_codegen.generate(ctx.tracetypes, ctx.alphabet())
+        traces_codegen.generate(ctx.tracetypes, ctx.hypertracetypes, ctx.alphabet())
 
 
 # for p in processes:

@@ -9,9 +9,6 @@ class CodeGenStmt(CodeGenBase):
     Generate C++ code for statements
     """
 
-    def __init__(self, args, ctx):
-        super().__init__(args, ctx)
-
     def _gen_stmt(self, stmt, wr, wr_h):
         if isinstance(stmt, Let):
             self._gen_let(stmt, wr, wr_h)

@@ -9,14 +9,18 @@ from vamos_common.types.type import (
     STRING_TYPE,
     NumType,
     StringType,
+    HypertraceType
 )
 
 from .stmt import CodeGenStmt
 from ...spec.ir.expr import (
     MethodCall,
     New,
+    IfExpr
+)
+
+from vamos_common.spec.ir.expr import (
     IsIn,
-    IfExpr,
     Cast,
     CommandLineArgument,
     BinaryOp,
@@ -65,8 +69,8 @@ class CodeGenExpr(CodeGenStmt):
         if isinstance(ty, TraceType):
             trace_ty = self.ctx.add_tracetype(ty, stmt.outputs).name
             wr(f"static_cast<{trace_ty}*>(__new_trace<{trace_ty}>())")
-        elif isinstance(ty, TraceType):
-            htrace_ty = self.ctx.add_hypertracetype(ty)
+        elif isinstance(ty, HypertraceType):
+            htrace_ty = self.ctx.add_hypertracetype(ty, stmt.outputs).name
             wr(f"static_cast<{htrace_ty}*>(__new_hyper_trace<{htrace_ty}>())")
         elif isinstance(ty, (UserType, SimpleType)):
             wr(f"__new_output_var(sizeof({cpp_type(ty)}))")
@@ -74,7 +78,7 @@ class CodeGenExpr(CodeGenStmt):
             raise NotImplementedError(f"Unknown type in `new`: {stmt}")
 
     def _gen_is_in(self, stmt, wr, wr_h):
-        wr(f"__is_in(")
+        wr("__is_in(")
         self.gen(stmt.lhs, wr, wr_h)
         wr(", ")
         self.gen(stmt.rhs, wr, wr_h)
