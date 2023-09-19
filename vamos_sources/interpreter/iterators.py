@@ -33,7 +33,6 @@ class ListIterator(Iterator):
         return val
 
 
-
 class FiniteIterator(Iterator):
     """
     Iterator over a finite iterable, i.e., all elements are present

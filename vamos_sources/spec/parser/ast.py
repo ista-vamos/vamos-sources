@@ -1,7 +1,12 @@
 from importlib import import_module
 
 from lark.visitors import merge_transformers
-from vamos_common.parser.ast import BaseTransformer, ProcessEvents, ProcessTypes, ProcessExpr
+from vamos_common.parser.ast import (
+    BaseTransformer,
+    ProcessEvents,
+    ProcessTypes,
+    ProcessExpr,
+)
 from vamos_common.parser.ast import visit_ast
 from vamos_common.parser.context import Context
 from vamos_common.spec.ir.element import Element
@@ -90,7 +95,7 @@ class ProcessAST(ProcessExpr):
         return StatementList(items)
 
     def imports(self, items):
-        #self._imports = items
+        # self._imports = items
         return items
 
     def events_and_imports(self, items):

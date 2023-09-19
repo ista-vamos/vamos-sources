@@ -8,17 +8,16 @@ from vamos_sources.spec.ir.expr import MethodCall
 from vamos_common.types.methods import MethodHeader
 
 
-
 from ._common import gen_params
 
 header_get = MethodHeader(
-            "get",
-            [],
-            NumType(),
+    "get",
+    [],
+    NumType(),
 )
 
-class UniformDistribution(Value):
 
+class UniformDistribution(Value):
     def __init__(self, l, h):
         super().__init__("<UniformDistribution>", None)
         self.l = l
@@ -30,7 +29,8 @@ class UniformDistribution(Value):
             types.assign(l, types.get(methodcall))
             types.assign(h, types.get(methodcall))
 
-        self._method_get = Method(MethodHeader("get", [], NumType(), _typing_rules_get),
+        self._method_get = Method(
+            MethodHeader("get", [], NumType(), _typing_rules_get),
             lambda s, p: Constant(randint(self.l, self.h), IntType(32)),
         )
 
@@ -51,8 +51,10 @@ def uni(_, params):
     l, h = params
     return Constant(randint(l.value, h.value), IntType(32))
 
+
 class RandUniformTy(ObjectType):
-    methods = { "get" : header_get }
+    methods = {"get": header_get}
+
 
 header_uniform = MethodHeader("rand.uniform", [NumType(), NumType()], RandUniformTy())
 header_uni = MethodHeader("rand.uni", [IntType(32), IntType(32)], IntType(32))

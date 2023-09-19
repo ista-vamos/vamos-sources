@@ -9,15 +9,11 @@ from vamos_common.types.type import (
     STRING_TYPE,
     NumType,
     StringType,
-    HypertraceType
+    HypertraceType,
 )
 
 from .stmt import CodeGenStmt
-from ...spec.ir.expr import (
-    MethodCall,
-    New,
-    IfExpr
-)
+from ...spec.ir.expr import MethodCall, New, IfExpr
 
 from vamos_common.spec.ir.expr import (
     IsIn,

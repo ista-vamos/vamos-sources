@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python3 $(dirname $0)/python/vamos_sources/spec/compiler.py $@
+python3 $(dirname $0)/vamos_sources/spec/compiler.py $@
