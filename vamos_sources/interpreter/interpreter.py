@@ -14,9 +14,14 @@ from vamos_sources.spec.ir.expr import (
     MethodCall,
     New,
     IfExpr,
-    CommandLineArgument,
+)
+from vamos_common.spec.ir.expr import (
     Expr,
+    CommandLineArgument,
     IsIn,
+    Cast,
+    BinaryOp,
+    Event,
     TupleExpr,
     CompareExpr,
 )
@@ -25,7 +30,6 @@ from vamos_sources.spec.ir.ir import (
     Yield,
     StatementList,
     ForEach,
-    Event,
     Continue,
     Break,
 )
@@ -48,7 +52,7 @@ class StdoutOutput(Value):
             end="",
         )
         print(", " if event.params else "", end="")
-        print(", ".join(map(lambda p: str(p.value), event.params)))
+        print(", ".join(map(lambda p: str(p.pretty_str()), event.params)))
 
 
 STDOUT_OUTPUT = StdoutOutput()
@@ -93,7 +97,7 @@ class Interpreter:
         self_path = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
-        sys.path.insert(0, abspath(f"{self_path}/../modules"))
+        sys.path.insert(0, abspath(f"{self_path}/.."))
         for mpath in reversed(self.args.modules_dirs):
             sys.path.insert(0, abspath(mpath))
 
@@ -150,7 +154,7 @@ class Interpreter:
         raise NotImplementedError(f"Invalid cmp to eval: {cmp} : {type(cmp)}")
 
     def eval_expr(self, name):
-        if isinstance(name, Constant):
+        if isinstance(name, (Constant, Event)):
             return name
 
         if isinstance(name, MethodCall):

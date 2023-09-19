@@ -157,6 +157,9 @@ class Continue(Statement):
     def __repr__(self):
         return "Continue"
 
+    def typing_rule(self, types):
+        pass
+
 
 class Break(Statement):
     @property
@@ -165,6 +168,9 @@ class Break(Statement):
 
     def __repr__(self):
         return "Break"
+
+    def typing_rule(self, types):
+        pass
 
 
 class OutputDecl(Statement):

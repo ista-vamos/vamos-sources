@@ -1,4 +1,4 @@
-from vamos_common.types.type import IterableType
+from vamos_common.types.type import IterableType, TupleType
 
 from .iterators import TupleIterator
 
@@ -21,13 +21,18 @@ class Value:
 class Iterable(Value):
     def __init__(self, val, ty):
         super().__init__(val, ty)
-        assert isinstance(ty, IterableType), ty
+        assert isinstance(ty, (IterableType, TupleType)), ty
 
     def iterator(self):
         raise NotImplementedError(f"Child must override: {type(self)}")
 
 
 class Tuple(Iterable):
+    def __init__(self, vals, ty):
+        super().__init__(vals, ty)
+        assert isinstance(vals, list), vals
+        assert isinstance(ty, TupleType), tys
+
     def iterator(self):
         return TupleIterator(self)
 
@@ -35,7 +40,7 @@ class Tuple(Iterable):
         return f"Tuple({','.join(map(str, self.value()))})"
 
 
-class Trace(Iterable):
+class Trace(Value):
     next_id = 1
 
     def __init__(self, ty, name=None, out=None):

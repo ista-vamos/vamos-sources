@@ -1,5 +1,5 @@
 from vamos_common.spec.ir.constant import Constant
-from vamos_common.types.type import IteratorType
+from vamos_common.types.type import IteratorType, TupleIteratorType
 
 
 class Iterator:
@@ -94,3 +94,32 @@ class LazyIterator(Iterator):
     def next(self):
         assert self._last_value is not None, "has_next was not called?"
         return Constant(self._last_value, self._const_ty)
+
+
+class TupleIterator(Iterator):
+    def __init__(self, tpl):
+        vals = tpl.value()
+        self._elem_ty = tpl.type()
+        self._type = TupleIteratorType(tpl.type().subtypes())
+
+        self._next_ty = None
+        self._next_value = None
+        self._done = False
+        self.iter = iter(vals)
+
+    def has_next(self):
+        assert self._done is False
+        try:
+            self._next_value = next(self.iter)
+            return True
+        except StopIteration:
+            self._next_value = None
+            self._done = True
+            return False
+
+    def is_done(self):
+        return self._done
+
+    def next(self):
+        assert self._next_value is not None, "has_next was not called?"
+        return self._next_value
