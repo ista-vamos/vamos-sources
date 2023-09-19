@@ -10,6 +10,7 @@ from vamos_common.types.type import (
     NumType,
     StringType,
     HypertraceType,
+    BOOL_TYPE,
 )
 
 from .stmt import CodeGenStmt
@@ -21,6 +22,7 @@ from vamos_common.spec.ir.expr import (
     CommandLineArgument,
     BinaryOp,
     Event,
+    CompareExpr,
 )
 
 
@@ -51,8 +53,12 @@ class CodeGenExpr(CodeGenStmt):
             self._gen_cmdarg(stmt, wr, wr_h)
         elif isinstance(stmt, BinaryOp):
             self._gen_bin_op(stmt, wr, wr_h)
+        elif isinstance(stmt, CompareExpr):
+            self._gen_cmp_op(stmt, wr, wr_h)
         else:
-            raise NotImplementedError(f"Codegen not implemented for expr {stmt}")
+            raise NotImplementedError(
+                f"Codegen not implemented for expr {stmt} : {type(stmt)}"
+            )
 
     def _gen_constant(self, stmt, wr):
         if isinstance(stmt.type(), NumType):
@@ -159,6 +165,23 @@ class CodeGenExpr(CodeGenStmt):
             wr(")")
         else:
             raise NotImplementedError(f"Codegen not implemented for binary op {stmt}")
+
+    def _gen_cmp_op(self, stmt, wr, wr_h):
+        if self.get_type(stmt.lhs) != self.get_type(stmt.rhs):
+            raise RuntimeError(
+                "Comparing values of different types: {self.get_type(stmt.lhs)} and {self.get_type(stmt.rhs)}"
+            )
+        assert self.get_type(stmt) == BOOL_TYPE, self.get_type(stmt)
+        if isinstance(self.get_type(stmt.lhs), NumType):
+            wr("(")
+            self.gen(stmt.lhs, wr, wr_h)
+            wr(stmt.comparison)
+            self.gen(stmt.rhs, wr, wr_h)
+            wr(")")
+        else:
+            raise NotImplementedError(
+                f"Codegen not implemented for comparison {stmt} : {type(stmt)}"
+            )
 
     def _gen_event(self, stmt, wr, wr_h):
         wr(f"Event_{stmt.name}(")
