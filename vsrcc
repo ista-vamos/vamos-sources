@@ -1,3 +1,4 @@
 #!/bin/bash
 
+export PYTHON_PATH=$(dirname $0)
 python3 $(dirname $0)/vamos_sources/spec/compiler.py $@
