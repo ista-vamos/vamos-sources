@@ -12,7 +12,7 @@ from vamos_common.types.type import (
 from vamos_sources.interpreter.iterators import FiniteIterator
 from vamos_sources.interpreter.method import Method
 from vamos_sources.interpreter.value import Value, Trace
-from vamos_sources.spec.ir.expr import Event
+from vamos_common.spec.ir.expr import Event
 from vamos_sources.spec.ir.expr import MethodCall
 
 header_lines = MethodHeader("lines", [], IteratorType(STRING_TYPE))
