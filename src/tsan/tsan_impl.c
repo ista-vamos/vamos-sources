@@ -29,8 +29,8 @@
 static CACHELINE_ALIGNED _Atomic size_t last_thread_id = 1;
 static CACHELINE_ALIGNED _Atomic size_t timestamp = 1;
 
-static struct buffer *top_shmbuf;
-static struct source_control *top_control;
+static vms_shm_buffer *top_shmbuf;
+static struct vms_source_control *top_control;
 
 struct __vrd_thread_data {
   /* The original data and function passed to thrd_create */
@@ -43,7 +43,7 @@ struct __vrd_thread_data {
    * (might not be uinque) */
   uint64_t std_thread_id;
   /* SHM buffer */
-  struct buffer *shmbuf;
+  vms_shm_buffer *shmbuf;
   /* the thread exited? */
   bool exited;
   /* a sync variable for syncronizing the startup with parent */
@@ -56,7 +56,7 @@ struct __vrd_thread_data {
 static CACHELINE_ALIGNED _Thread_local struct _thread_data {
   size_t thread_id;
   shm_eventid last_id;
-  struct buffer *shmbuf;
+  vms_shm_buffer *shmbuf;
   struct __vrd_thread_data *data;
   size_t waited_for_buffer;
 } thread_data;
@@ -66,7 +66,7 @@ static inline uint64_t rt_timestamp(void) { return __rdtsc(); }
 #endif
 
 const char *shmkey = "/vrd";
-static struct buffer *top_shmbuf;
+static vms_shm_buffer *top_shmbuf;
 #ifdef DBGBUF
 const char *dbgkey = "/vrd-vars";
 static size_t dbgbuf_size;
@@ -239,7 +239,7 @@ void __vrd_init() {
     abort();
   }
 
-  top_shmbuf = create_shared_buffer(shmkey, 598, top_control);
+  top_shmbuf = vms_shm_buffer_create(shmkey, 598, top_control);
   if (!top_shmbuf) {
     fprintf(stderr, "Failed creating top SHM buffer\n");
     abort();
@@ -253,11 +253,12 @@ void __vrd_init() {
 #endif
 
   fprintf(stderr, "info: waiting for the monitor to attach... ");
-  buffer_wait_for_monitor(top_shmbuf);
+  vms_shm_buffer_wait_for_reader(top_shmbuf);
   fprintf(stderr, "done\n");
 
   size_t num;
-  struct event_record *events = buffer_get_avail_events(top_shmbuf, &num);
+  struct vms_event_record *events =
+      vms_shm_buffer_get_avail_events(top_shmbuf, &num);
   assert(num == EVENTS_NUM && "Invalid number of events");
   for (unsigned i = 0; i < EVENTS_NUM; ++i) {
     event_kinds[i] = events[i].kind;
@@ -291,7 +292,7 @@ void __vrd_fini(void) {
   lock();
   if (top_shmbuf) {
     print_events_no = true;
-    destroy_shared_buffer(top_shmbuf);
+    vms_shm_buffer_destroy(top_shmbuf);
 
     assert(thread_data.shmbuf == top_shmbuf);
     thread_data.shmbuf = NULL;
@@ -318,9 +319,9 @@ void __vrd_fini(void) {
 #endif
 }
 
-static inline void *start_event(struct buffer *shm, int type) {
+static inline void *start_event(vms_shm_buffer *shm, int type) {
   shm_event *ev;
-  while (!(ev = buffer_start_push(shm))) {
+  while (!(ev = vms_shm_buffer_start_push(shm))) {
     ++thread_data.waited_for_buffer;
   }
   /* push the base info about event */
@@ -328,7 +329,7 @@ static inline void *start_event(struct buffer *shm, int type) {
   ev->kind = event_kinds[type];
   /* push the timestamp */
   uint64_t ts = atomic_fetch_add_explicit(&timestamp, 1, memory_order_acq_rel);
-  return buffer_partial_push(
+  return vms_shm_buffer_partial_push(
       shm, (void *)(((unsigned char *)ev) + sizeof(ev->id) + sizeof(ev->kind)),
       &ts, sizeof(ts));
 }
@@ -370,14 +371,15 @@ void *__vrd_create_thrd(void *original_fun, void *original_data) {
 /* Called after thrd_create. */
 void __vrd_thrd_created(void *data, uint64_t std_tid) {
   struct __vrd_thread_data *tdata = (struct __vrd_thread_data *)data;
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   assert(shm && "Do not have SHM buffer");
   void *addr = start_event(shm, EV_FORK);
-  buffer_partial_push(shm, addr, &tdata->thread_id, sizeof(tdata->thread_id));
+  vms_shm_buffer_partial_push(shm, addr, &tdata->thread_id,
+                              sizeof(tdata->thread_id));
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)addr) - sizeof(size_t));
 #endif
-  buffer_finish_push(shm);
+  vms_shm_buffer_finish_push(shm);
 
   /* notify the thread that it can proceed
      (we cannot allow the thread to emit any events before the fork event is
@@ -459,7 +461,7 @@ void __vrd_exit_main_thread(void) {
     fprintf(stderr, "info: number of emitted events: %lu\n", timestamp - 1);
     lock();
     if (top_shmbuf) {
-      destroy_shared_buffer(top_shmbuf);
+      vms_shm_buffer_destroy(top_shmbuf);
       top_shmbuf = NULL;
     }
 #ifdef DBGBUF
@@ -503,14 +505,15 @@ void *__vrd_thrd_join(uint64_t tid) {
 
 void __vrd_thrd_joined(void *dataptr) {
   struct __vrd_thread_data *data = (struct __vrd_thread_data *)dataptr;
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   void *addr = start_event(shm, EV_JOIN);
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)addr) - sizeof(size_t));
   size_t tid = data->thread_id;
 #endif
-  buffer_partial_push(shm, addr, &data->thread_id, sizeof(&data->thread_id));
-  buffer_finish_push(shm);
+  vms_shm_buffer_partial_push(shm, addr, &data->thread_id,
+                              sizeof(&data->thread_id));
+  vms_shm_buffer_finish_push(shm);
 
   lock();
   shm_list_embedded_remove(&data->list);
@@ -524,13 +527,13 @@ void __vrd_thrd_joined(void *dataptr) {
 }
 
 void __tsan_read1(void *addr) {
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   void *mem = start_event(shm, EV_READ);
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)mem) - sizeof(size_t));
 #endif
-  buffer_partial_push(shm, mem, &addr, sizeof(addr));
-  buffer_finish_push(shm);
+  vms_shm_buffer_partial_push(shm, mem, &addr, sizeof(addr));
+  vms_shm_buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
   fprintf(stderr, PRINT_PREFIX " read1(%p)\n", rt_timestamp(),
@@ -539,14 +542,14 @@ void __tsan_read1(void *addr) {
 }
 
 void read_N(void *addr, size_t N) {
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   void *mem = start_event(shm, EV_READ_N);
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)mem) - sizeof(size_t));
 #endif
-  mem = buffer_partial_push(shm, mem, &addr, sizeof(addr));
-  buffer_partial_push(shm, mem, &N, sizeof(N));
-  buffer_finish_push(shm);
+  mem = vms_shm_buffer_partial_push(shm, mem, &addr, sizeof(addr));
+  vms_shm_buffer_partial_push(shm, mem, &N, sizeof(N));
+  vms_shm_buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
   fprintf(stderr, PRINT_PREFIX " read%lu(%p)\n", rt_timestamp(),
@@ -565,13 +568,13 @@ void __tsan_unaligned_read2(void *addr) { read_N(addr, 2); }
 void __tsan_unaligned_read1(void *addr) { __tsan_read1(addr); }
 
 void __tsan_write1(void *addr) {
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   void *mem = start_event(shm, EV_WRITE);
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)mem) - sizeof(size_t));
 #endif
-  buffer_partial_push(shm, mem, &addr, sizeof(addr));
-  buffer_finish_push(shm);
+  vms_shm_buffer_partial_push(shm, mem, &addr, sizeof(addr));
+  vms_shm_buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
   fprintf(stderr, PRINT_PREFIX " write1(%p)\n", rt_timestamp(),
@@ -580,14 +583,14 @@ void __tsan_write1(void *addr) {
 }
 
 void write_N(void *addr, size_t N) {
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   void *mem = start_event(shm, EV_WRITE_N);
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)mem) - sizeof(size_t));
 #endif
-  mem = buffer_partial_push(shm, mem, &addr, sizeof(addr));
-  buffer_partial_push(shm, mem, &N, sizeof(N));
-  buffer_finish_push(shm);
+  mem = vms_shm_buffer_partial_push(shm, mem, &addr, sizeof(addr));
+  vms_shm_buffer_partial_push(shm, mem, &N, sizeof(N));
+  vms_shm_buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
   fprintf(stderr, PRINT_PREFIX " write%lu(%p)\n", rt_timestamp(),
@@ -606,13 +609,13 @@ void __tsan_unaligned_write2(void *addr) { write_N(addr, 2); }
 void __tsan_unaligned_write1(void *addr) { __tsan_write1(addr); }
 
 void __vrd_mutex_lock(void *addr) {
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   void *mem = start_event(shm, EV_LOCK);
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)mem) - sizeof(size_t));
 #endif
-  buffer_partial_push(shm, mem, &addr, sizeof(addr));
-  buffer_finish_push(shm);
+  vms_shm_buffer_partial_push(shm, mem, &addr, sizeof(addr));
+  vms_shm_buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
   fprintf(stderr, PRINT_PREFIX " mutex_lock(%p)\n", rt_timestamp(),
@@ -621,13 +624,13 @@ void __vrd_mutex_lock(void *addr) {
 }
 
 void __vrd_mutex_unlock(void *addr) {
-  struct buffer *shm = thread_data.shmbuf;
+  vms_shm_buffer *shm = thread_data.shmbuf;
   void *mem = start_event(shm, EV_UNLOCK);
 #ifdef DEBUG_STDOUT
   size_t ts = *(size_t *)(((unsigned char *)mem) - sizeof(size_t));
 #endif
-  buffer_partial_push(shm, mem, &addr, sizeof(addr));
-  buffer_finish_push(shm);
+  vms_shm_buffer_partial_push(shm, mem, &addr, sizeof(addr));
+  vms_shm_buffer_finish_push(shm);
 
 #ifdef DEBUG_STDOUT
   fprintf(stderr, PRINT_PREFIX " mutex_unlock(%p)\n", rt_timestamp(),

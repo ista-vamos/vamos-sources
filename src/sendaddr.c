@@ -39,20 +39,22 @@ int main(int argc, char *argv[]) {
     long N = atol(argv[2]);
 
     /* Initialize the info about this source */
-    struct source_control *control = source_control_define(1, "addr", "p");
+    struct vms_source_control *control =
+        vms_source_control_define(1, "addr", "p");
     assert(control);
 
     const size_t capacity = 128;
-    struct buffer *shm = create_shared_buffer(shmkey, capacity, control);
+    vms_shm_buffer *shm = vms_shm_buffer_create(shmkey, capacity, control);
     assert(shm);
     free(control);
 
     fprintf(stderr, "info: waiting for the monitor to attach... ");
-    buffer_wait_for_monitor(shm);
+    vms_shm_buffer_wait_for_reader(shm);
     fprintf(stderr, "done\n");
 
     size_t events_num;
-    struct event_record *events = buffer_get_avail_events(shm, &events_num);
+    struct vms_event_record *events =
+        vms_shm_buffer_get_avail_events(shm, &events_num);
     assert(events_num == 1);
 
     struct event ev;
@@ -60,19 +62,19 @@ int main(int argc, char *argv[]) {
     ev.base.kind = events[0].kind;
     void *addr, *p;
     while (--N > 0) {
-        while (!(addr = buffer_start_push(shm))) {
-            ++waiting_for_buffer;
+        while (!(addr = vms_shm_buffer_start_push(shm))) {
+          ++waiting_for_buffer;
         }
         ++ev.base.id;
         p = addr;
-        addr = buffer_partial_push(shm, addr, &ev, sizeof(ev));
-        buffer_partial_push(shm, addr, &p, sizeof(void *));
-        buffer_finish_push(shm);
+        addr = vms_shm_buffer_partial_push(shm, addr, &ev, sizeof(ev));
+        vms_shm_buffer_partial_push(shm, addr, &p, sizeof(void *));
+        vms_shm_buffer_finish_push(shm);
     }
 
     fprintf(stderr, "info: sent %lu events, busy waited on buffer %lu cycles\n",
             ev.base.id, waiting_for_buffer);
-    destroy_shared_buffer(shm);
+    vms_shm_buffer_destroy(shm);
 
     return 0;
 }

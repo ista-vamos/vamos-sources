@@ -145,11 +145,11 @@ char **names[3];
 static size_t exprs_num[3];
 static regex_t *re[3];
 static char **signatures[3];
-struct event_record *events[3];
+struct vms_event_record *events[3];
 static size_t waiting_for_buffer[3];
 static vms_event evs[3];
 
-static struct buffer *shmbuf[3];
+static vms_shm_buffer *shmbuf[3];
 
 typedef struct {
     int fd;
@@ -170,7 +170,7 @@ static int parse_line(int fd, struct line *line_info) {
     regmatch_t matches[MAXMATCH + 1];
 
     int num = (int)exprs_num[fd];
-    struct buffer *shm = shmbuf[fd];
+    vms_shm_buffer *shm = shmbuf[fd];
     char *line = line_info->data;
 
     // info("[%d] parsing line (%p): '%s'\n", fd, line, line);
@@ -191,10 +191,10 @@ static int parse_line(int fd, struct line *line_info) {
 
         size_t waiting = 0;
         const char *o = signatures[fd][i];
-        while (!(addr = buffer_start_push(shm))) {
+        while (!(addr = vms_shm_buffer_start_push(shm))) {
             ++waiting_for_buffer[fd];
             if (++waiting > 5000) {
-                if (!buffer_monitor_attached(shm)) {
+                if (!vms_shm_buffer_reader_is_ready(shm)) {
                     warn("buffer detached while waiting for space");
                     return -1;
                 }
@@ -203,18 +203,18 @@ static int parse_line(int fd, struct line *line_info) {
         }
         /* push the base info about event */
         ++ev->id;
-        addr = buffer_partial_push(shm, addr, ev, sizeof(*ev));
+        addr = vms_shm_buffer_partial_push(shm, addr, ev, sizeof(*ev));
         if (timestamps) {
             assert(*o == 't');
-            addr = buffer_partial_push(shm, addr, &line_info->timestamp,
-                                       sizeof(line_info->timestamp));
+            addr = vms_shm_buffer_partial_push(shm, addr, &line_info->timestamp,
+                                               sizeof(line_info->timestamp));
             ++o;
         }
 
         /* push the arguments of the event */
         for (; *o && m <= MAXMATCH; ++o, ++m) {
             if (*o == 'L') { /* user wants the whole line */
-                addr = buffer_partial_push_str(shm, addr, ev->id, line);
+                addr = vms_shm_buffer_partial_push_str(shm, addr, ev->id, line);
                 continue;
             }
             if (*o != 'M') {
@@ -239,7 +239,8 @@ static int parse_line(int fd, struct line *line_info) {
                 assert(matches[0].rm_so >= 0);
                 strncpy(tmpline, line + matches[0].rm_so, len);
                 tmpline[len] = '\0';
-                addr = buffer_partial_push_str(shm, addr, ev->id, tmpline);
+                addr =
+                    vms_shm_buffer_partial_push_str(shm, addr, ev->id, tmpline);
                 continue;
             } else {
                 strncpy(tmpline, line + matches[m].rm_so, len);
@@ -249,34 +250,39 @@ static int parse_line(int fd, struct line *line_info) {
             switch (*o) {
                 case 'c':
                     assert(len == 1);
-                    addr = buffer_partial_push(
+                    addr = vms_shm_buffer_partial_push(
                         shm, addr, (char *)(line + matches[m].rm_eo),
                         sizeof(op.c));
                     break;
                 case 'i':
                     op.i = atoi(tmpline);
-                    addr = buffer_partial_push(shm, addr, &op.i, sizeof(op.i));
+                    addr = vms_shm_buffer_partial_push(shm, addr, &op.i,
+                                                       sizeof(op.i));
                     break;
                 case 'l':
                     op.l = atol(tmpline);
-                    addr = buffer_partial_push(shm, addr, &op.l, sizeof(op.l));
+                    addr = vms_shm_buffer_partial_push(shm, addr, &op.l,
+                                                       sizeof(op.l));
                     break;
                 case 'f':
                     op.f = atof(tmpline);
-                    addr = buffer_partial_push(shm, addr, &op.f, sizeof(op.f));
+                    addr = vms_shm_buffer_partial_push(shm, addr, &op.f,
+                                                       sizeof(op.f));
                     break;
                 case 'd':
                     op.d = strtod(tmpline, NULL);
-                    addr = buffer_partial_push(shm, addr, &op.d, sizeof(op.d));
+                    addr = vms_shm_buffer_partial_push(shm, addr, &op.d,
+                                                       sizeof(op.d));
                     break;
                 case 'S':
-                    addr = buffer_partial_push_str(shm, addr, ev->id, tmpline);
+                    addr = vms_shm_buffer_partial_push_str(shm, addr, ev->id,
+                                                           tmpline);
                     break;
                 default:
                     assert(0 && "Invalid signature");
             }
         }
-        buffer_finish_push(shm);
+        vms_shm_buffer_finish_push(shm);
 
         if (first_match_only)
             break;
@@ -329,7 +335,7 @@ static bool monitor_disconected() {
     for (int i = 0; i < 3; ++i) {
         if (shmbuf[i] == 0)
             continue;
-        if (buffer_monitor_attached(shmbuf[i])) {
+        if (vms_shm_buffer_reader_is_ready(shmbuf[i])) {
             return false;
         }
     }
@@ -677,7 +683,7 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
         }
 
         /* Initialize the info about this source */
-        struct source_control *control = source_control_define_pairwise(
+        struct vms_source_control *control = vms_source_control_define_pairwise(
             exprs_num[i], (const char **)names[i],
             (const char **)signatures[i]);
         assert(control);
@@ -690,12 +696,12 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
         }
 
         const size_t capacity = 1000;
-        shmbuf[i] = create_shared_buffer(extended_shmkey, capacity, control);
+        shmbuf[i] = vms_shm_buffer_create(extended_shmkey, capacity, control);
         /* create the shared buffer */
         assert(shmbuf[i]);
 
         size_t events_num;
-        events[i] = buffer_get_avail_events(shmbuf[i], &events_num);
+        events[i] = vms_shm_buffer_get_avail_events(shmbuf[i], &events_num);
         free(control);
     }
 
@@ -710,7 +716,7 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
     for (int i = 0; i < 3; ++i) {
         if (shmbuf[i] == NULL)
             continue;
-        err = buffer_wait_for_monitor(shmbuf[i]);
+        err = vms_shm_buffer_wait_for_reader(shmbuf[i]);
         if (err < 0) {
             if (err != EINTR) {
                 warn("failed waiting: %s\n", strerror(-err));
@@ -783,7 +789,7 @@ static void event_exit(void) {
         info("[fd %d] info: maximum lines pool size: %lu\n", fd,
              pool_max_size[fd]);
 #endif
-        destroy_shared_buffer(shmbuf[fd]);
+        vms_shm_buffer_destroy(shmbuf[fd]);
 
         for (int i = 0; i < (int)exprs_num[fd]; ++i) {
             regfree(&re[fd][i]);

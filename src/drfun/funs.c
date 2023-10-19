@@ -80,15 +80,15 @@ static dr_emit_flags_t event_app_instruction(void *drcontext, void *tag,
 static void event_thread_context_init(void *drcontext, bool new_depth);
 static void event_thread_context_exit(void *drcontext, bool process_exit);
 
-static struct buffer *top_shmbuffer;
-static struct source_control *top_control;
-static struct event_record *events;
+static vms_shm_buffer *top_shmbuffer;
+static struct vms_source_control *top_control;
+static struct vms_event_record *events;
 unsigned long *addresses;
 static size_t events_num;
 
 typedef struct {
     size_t thread;
-    struct buffer *shm;
+    vms_shm_buffer *shm;
     size_t waiting_for_buffer;
 } per_thread_t;
 
@@ -172,7 +172,7 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
     }
 
     /* Initialize the info about this source */
-    top_control = source_control_define_pairwise(
+    top_control = vms_source_control_define_pairwise(
         events_num, (const char **)names, (const char **)signatures);
     assert(top_control);
 
@@ -205,13 +205,13 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
                                             0);
 
     const size_t capacity = 256;
-    top_shmbuffer = create_shared_buffer(shmkey, capacity, top_control);
+    top_shmbuffer = vms_shm_buffer_create(shmkey, capacity, top_control);
     DR_ASSERT(top_shmbuffer);
 
-    events = buffer_get_avail_events(top_shmbuffer, &events_num);
+    events = vms_shm_buffer_get_avail_events(top_shmbuffer, &events_num);
 
     dr_printf("Waiting for the monitor to attach\n");
-    if (buffer_wait_for_monitor(top_shmbuffer) < 0) {
+    if (vms_shm_buffer_wait_for_reader(top_shmbuffer) < 0) {
         perror("Waiting for the buffer failed");
         abort();
     }
@@ -225,7 +225,7 @@ static void event_thread_context_init(void *drcontext, bool new_depth) {
         data->thread = ++thread_num;
         /* TODO: for now we create a buffer of the same type as the top buffer
          */
-        data->shm = create_shared_sub_buffer(top_shmbuffer, 0, top_control);
+        data->shm = vms_shm_buffer_create_sub_buffer(top_shmbuffer, 0, top_control);
         data->waiting_for_buffer = 0;
         DR_ASSERT(data->shm && "Failed creating buffer");
     } else {
@@ -242,7 +242,7 @@ static void event_thread_context_exit(void *drcontext, bool thread_exit) {
         "Thread %lu exits, looped in a busy wait for the buffer %lu times\n",
         data->thread, data->waiting_for_buffer);
     dr_printf("... (releasing shared buffer)\n");
-    release_shared_buffer(data->shm);
+    vms_shm_buffer_release(data->shm);
     dr_thread_free(drcontext, data, sizeof(per_thread_t));
 }
 
@@ -254,7 +254,7 @@ static void event_exit(void) {
     }
 #endif
     drmgr_exit();
-    destroy_shared_buffer(top_shmbuffer);
+    vms_shm_buffer_destroy(top_shmbuffer);
     dr_global_free(addresses, events_num * sizeof(unsigned long));
 }
 
@@ -309,10 +309,10 @@ static void at_call_generic(size_t fun_idx, const char *sig) {
 
     per_thread_t *data =
         (per_thread_t *)drmgr_get_cls_field(drcontext, tcls_idx);
-    struct buffer *shm = data->shm;
+    vms_shm_buffer *shm = data->shm;
     void *shmaddr;
-    while (!(shmaddr = buffer_start_push(shm))) {
-        ++data->waiting_for_buffer;
+    while (!(shmaddr = vms_shm_buffer_start_push(shm))) {
+            ++data->waiting_for_buffer;
     }
     DR_ASSERT(fun_idx < events_num);
     vms_event_funcall *ev = (vms_event_funcall *)shmaddr;
@@ -328,14 +328,14 @@ static void at_call_generic(size_t fun_idx, const char *sig) {
             case '_':
                 break;
             case 'S':
-                shmaddr = buffer_partial_push_str(
+                shmaddr = vms_shm_buffer_partial_push_str(
                     shm, shmaddr, last_event_id,
                     *(const char **)call_get_arg_ptr(&mc, i, *o));
                 break;
             default:
-                shmaddr = buffer_partial_push(shm, shmaddr,
-                                              call_get_arg_ptr(&mc, i, *o),
-                                              signature_op_get_size(*o));
+                shmaddr = vms_shm_buffer_partial_push(
+                    shm, shmaddr, call_get_arg_ptr(&mc, i, *o),
+                    signature_op_get_size(*o));
                 /* printf(" arg %d=%ld", i, *(size_t*)call_get_arg_ptr(&mc, i,
                  * *o));
                  */
@@ -343,7 +343,7 @@ static void at_call_generic(size_t fun_idx, const char *sig) {
         }
         ++i;
     }
-    buffer_finish_push(shm);
+    vms_shm_buffer_finish_push(shm);
     /* putchar('\n'); */
 }
 

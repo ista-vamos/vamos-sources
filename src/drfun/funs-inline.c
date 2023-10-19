@@ -69,7 +69,7 @@ static dr_emit_flags_t event_app_instruction(void *drcontext, void *tag,
                                              bool for_trace, bool translating,
                                              void *user_data);
 
-static struct buffer *shm;
+static vms_shm_buffer *shm;
 static module_data_t *main_module;
 
 struct call_event_spec events[] = {
@@ -127,12 +127,12 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
     DR_ASSERT(shm);
     drmgr_register_bb_instrumentation_event(NULL, event_app_instruction, 0);
 
-    // buffer_wait_for_monitor(shm);
+    // vms_shm_buffer_wait_for_reader(shm);
 }
 
 static void event_exit(void) {
     dr_free_module_data(main_module);
-    destroy_shared_buffer(shm);
+    vms_shm_buffer_destroy(shm);
 #ifdef SHOW_SYMBOLS
     if (drsym_exit() != DRSYM_SUCCESS) {
         dr_log(NULL, DR_LOG_ALL, 1,

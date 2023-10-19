@@ -62,7 +62,7 @@ static int tls_idx;
 
 static client_id_t my_id;
 
-static struct buffer *shm;
+static vms_shm_buffer *shm;
 static struct call_event_spec *events;
 static size_t events_num;
 size_t max_event_size;
@@ -127,7 +127,7 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
     DR_ASSERT(tls_idx > -1);
 
     dr_printf("Waiting for the monitor to attach\n");
-    buffer_wait_for_monitor(shm);
+    vms_shm_buffer_wait_for_reader(shm);
 }
 
 static void event_exit(void) {
@@ -140,7 +140,7 @@ static void event_exit(void) {
     drmgr_unregister_tls_field(tls_idx);
     drmgr_exit();
     dr_printf("Releasing shared buffer\n");
-    destroy_shared_buffer(shm);
+    vms_shm_buffer_destroy(shm);
     dr_printf("Releasing shared control buffer\n");
     release_shared_control_buffer(events);
 }

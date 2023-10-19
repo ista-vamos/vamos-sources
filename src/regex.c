@@ -72,16 +72,16 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialize the info about this source */
-    struct source_control *control = source_control_define_pairwise(
+    struct vms_source_control *control = vms_source_control_define_pairwise(
         exprs_num, (const char **)names, (const char **)signatures);
     assert(control);
     const size_t capacity = 256;
-    struct buffer *shm = create_shared_buffer(shmkey, capacity, control);
+    vms_shm_buffer *shm = vms_shm_buffer_create(shmkey, capacity, control);
     assert(shm);
     free(control);
 
     fprintf(stderr, "info: waiting for the monitor to attach... ");
-    buffer_wait_for_monitor(shm);
+    vms_shm_buffer_wait_for_reader(shm);
     fprintf(stderr, "done\n");
 
     regmatch_t matches[MAXMATCH + 1];
@@ -97,7 +97,8 @@ int main(int argc, char *argv[]) {
     struct event ev;
     memset(&ev, 0, sizeof(ev));
     size_t num;
-    struct event_record *events = buffer_get_avail_events(shm, &num);
+    struct vms_event_record *events =
+        vms_shm_buffer_get_avail_events(shm, &num);
     assert(num == exprs_num && "Information in shared memory does not fit");
 
     while (1) {
@@ -125,13 +126,13 @@ int main(int argc, char *argv[]) {
             printf("{");
             int m = 1;
             void *addr;
-            while (!(addr = buffer_start_push(shm))) {
+            while (!(addr = vms_shm_buffer_start_push(shm))) {
                 ++waiting_for_buffer;
             }
             /* push the base info about event */
             ++ev.base.id;
             ev.base.kind = events[i].kind;
-            addr = buffer_partial_push(shm, addr, &ev, sizeof(ev));
+            addr = vms_shm_buffer_partial_push(shm, addr, &ev, sizeof(ev));
 
             /* push the arguments of the event */
             for (const char *o = signatures[i]; *o && m <= MAXMATCH; ++o, ++m) {
@@ -140,7 +141,8 @@ int main(int argc, char *argv[]) {
 
                 if (*o == 'L') { /* user wants the whole line */
                     printf("'%s'", line);
-                    addr = buffer_partial_push_str(shm, addr, ev.base.id, line);
+                    addr = vms_shm_buffer_partial_push_str(shm, addr,
+                                                           ev.base.id, line);
                     continue;
                 }
                 if (*o != 'M') {
@@ -168,8 +170,8 @@ int main(int argc, char *argv[]) {
                     assert(matches[0].rm_so >= 0);
                     strncpy(tmpline, line + matches[0].rm_so, len);
                     tmpline[len] = '\0';
-                    addr =
-                        buffer_partial_push_str(shm, addr, ev.base.id, tmpline);
+                    addr = vms_shm_buffer_partial_push_str(shm, addr,
+                                                           ev.base.id, tmpline);
                     printf("'%s'", tmpline);
                     continue;
                 } else {
@@ -181,44 +183,44 @@ int main(int argc, char *argv[]) {
                     case 'c':
                         assert(len == 1);
                         printf("%c", *(char *)(line + matches[m].rm_eo));
-                        addr = buffer_partial_push(
+                        addr = vms_shm_buffer_partial_push(
                             shm, addr, (char *)(line + matches[m].rm_eo),
                             sizeof(op.c));
                         break;
                     case 'i':
                         op.i = atoi(tmpline);
                         printf("%d", op.i);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.i, sizeof(op.i));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.i,
+                                                           sizeof(op.i));
                         break;
                     case 'l':
                         op.l = atol(tmpline);
                         printf("%ld", op.l);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.l, sizeof(op.l));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.l,
+                                                           sizeof(op.l));
                         break;
                     case 'f':
                         op.f = atof(tmpline);
                         printf("%lf", op.f);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.f, sizeof(op.f));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.f,
+                                                           sizeof(op.f));
                         break;
                     case 'd':
                         op.d = strtod(tmpline, NULL);
                         printf("%lf", op.d);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.d, sizeof(op.d));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.d,
+                                                           sizeof(op.d));
                         break;
                     case 'S':
                         printf("'%s'", tmpline);
-                        addr = buffer_partial_push_str(shm, addr, ev.base.id,
-                                                       tmpline);
+                        addr = vms_shm_buffer_partial_push_str(
+                            shm, addr, ev.base.id, tmpline);
                         break;
                     default:
                         assert(0 && "Invalid signature");
                 }
             }
-            buffer_finish_push(shm);
+            vms_shm_buffer_finish_push(shm);
             printf("}\n");
         }
     }
@@ -232,7 +234,7 @@ int main(int argc, char *argv[]) {
         regfree(&re[i]);
     }
 
-    destroy_shared_buffer(shm);
+    vms_shm_buffer_destroy(shm);
 
     return 0;
 }

@@ -51,7 +51,7 @@ static int tcls_idx;
 /* we'll number threads from 0 up */
 static size_t thread_num = 0;
 
-// static struct buffer *shm;
+// static vms_shm_buffer *shm;
 /* shmbuf assumes one writer and one reader, but here we may have multiple
  writers
  * (multiple threads), so we must make sure they are seuqntialized somehow
@@ -59,7 +59,7 @@ static size_t thread_num = 0;
 static size_t waiting_for_buffer = 0;
 static _Atomic(bool) _write_lock = false;
 
-// static struct event_record *events;
+// static struct vms_event_record *events;
 // static size_t events_num;
 
 static inline void write_lock() {
@@ -112,8 +112,8 @@ typedef struct _parsedata {
     const char **exprs;
     const char **signatures;
     const char **names;
-    struct buffer *shm;
-    struct event_record *events;
+    vms_shm_buffer *shm;
+    struct vms_event_record *events;
     struct event ev;
     const char *delim;
     regex_t re[];
@@ -242,8 +242,8 @@ char *buf_get_line(msgbuf *buf) { return buf_get_upto(buf, "\n"); }
 static inline void process_messages(msgbuf *buf, parsedata *const pd) {
     regmatch_t matches[MAXMATCH + 1];
     const char **signatures = pd->signatures;
-    struct event_record *events = pd->events;
-    struct buffer *shm = pd->shm;
+    struct vms_event_record *events = pd->events;
+    vms_shm_buffer *shm = pd->shm;
     size_t len = 0;
     char *tmpline = 0;
     size_t tmpline_len = 0;
@@ -274,13 +274,14 @@ static inline void process_messages(msgbuf *buf, parsedata *const pd) {
             printf("{");
             int m = 1;
             void *addr;
-            while (!(addr = buffer_start_push(shm))) {
+            while (!(addr = vms_shm_buffer_start_push(shm))) {
                 ++waiting_for_buffer;
             }
             /* push the base info about event */
             ++ev->base.id;
             ev->base.kind = events[i].kind;
-            addr = buffer_partial_push(shm, addr, ev, sizeof(struct event));
+            addr = vms_shm_buffer_partial_push(shm, addr, ev,
+                                               sizeof(struct event));
 
             /* push the arguments of the event */
             for (const char *o = signatures[i]; *o && m <= MAXMATCH; ++o, ++m) {
@@ -289,8 +290,8 @@ static inline void process_messages(msgbuf *buf, parsedata *const pd) {
 
                 if (*o == 'L') { /* user wants the whole line */
                     printf("'%s'", line);
-                    addr =
-                        buffer_partial_push_str(shm, addr, ev->base.id, line);
+                    addr = vms_shm_buffer_partial_push_str(shm, addr,
+                                                           ev->base.id, line);
                     continue;
                 }
                 if (*o != 'M') {
@@ -318,8 +319,8 @@ static inline void process_messages(msgbuf *buf, parsedata *const pd) {
                     assert(matches[0].rm_so >= 0);
                     strncpy(tmpline, line + matches[0].rm_so, len);
                     tmpline[len] = '\0';
-                    addr = buffer_partial_push_str(shm, addr, ev->base.id,
-                                                   tmpline);
+                    addr = vms_shm_buffer_partial_push_str(
+                        shm, addr, ev->base.id, tmpline);
                     printf("'%s'", tmpline);
                     continue;
                 } else {
@@ -331,44 +332,44 @@ static inline void process_messages(msgbuf *buf, parsedata *const pd) {
                     case 'c':
                         assert(len == 1);
                         printf("%c", *(char *)(line + matches[m].rm_eo));
-                        addr = buffer_partial_push(
+                        addr = vms_shm_buffer_partial_push(
                             shm, addr, (char *)(line + matches[m].rm_eo),
                             sizeof(op.c));
                         break;
                     case 'i':
                         op.i = atoi(tmpline);
                         printf("%d", op.i);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.i, sizeof(op.i));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.i,
+                                                           sizeof(op.i));
                         break;
                     case 'l':
                         op.l = atol(tmpline);
                         printf("%ld", op.l);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.l, sizeof(op.l));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.l,
+                                                           sizeof(op.l));
                         break;
                     case 'f':
                         op.f = atof(tmpline);
                         printf("%lf", op.f);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.f, sizeof(op.f));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.f,
+                                                           sizeof(op.f));
                         break;
                     case 'd':
                         op.d = strtod(tmpline, NULL);
                         printf("%lf", op.d);
-                        addr =
-                            buffer_partial_push(shm, addr, &op.d, sizeof(op.d));
+                        addr = vms_shm_buffer_partial_push(shm, addr, &op.d,
+                                                           sizeof(op.d));
                         break;
                     case 'S':
                         printf("'%s'", tmpline);
-                        addr = buffer_partial_push_str(shm, addr, ev->base.id,
-                                                       tmpline);
+                        addr = vms_shm_buffer_partial_push_str(
+                            shm, addr, ev->base.id, tmpline);
                         break;
                     default:
                         assert(0 && "Invalid signature");
                 }
             }
-            buffer_finish_push(shm);
+            vms_shm_buffer_finish_push(shm);
             printf("}\n");
             break;
         }
@@ -495,18 +496,18 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
     }
 
     /* Initialize the info about the sources */
-    struct source_control *control_in = source_control_define_pairwise(
+    struct vms_source_control *control_in = vms_source_control_define_pairwise(
         exprs_num_in, (const char **)names_in, (const char **)signatures_in);
     assert(control_in);
-    struct source_control *control_out = source_control_define_pairwise(
+    struct vms_source_control *control_out = vms_source_control_define_pairwise(
         exprs_num_out, (const char **)names_out, (const char **)signatures_out);
     assert(control_out);
 
     const size_t capacity = 256;
-    struct buffer *shm_out =
-        create_shared_buffer(shmkey_name_out, capacity, control_out);
-    struct buffer *shm_in =
-        create_shared_buffer(shmkey_name_in, capacity, control_in);
+    vms_shm_buffer *shm_out =
+        vms_shm_buffer_create(shmkey_name_out, capacity, control_out);
+    vms_shm_buffer *shm_in =
+        vms_shm_buffer_create(shmkey_name_in, capacity, control_in);
     assert(shm_out);
     assert(shm_in);
     free(control_out);
@@ -518,8 +519,8 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[]) {
     pd_in->delim = indelim;
     pd_in->ev.base.id = 3;
     fprintf(stderr, "info: waiting for the monitor to attach\n");
-    buffer_wait_for_monitor(shm_out);
-    buffer_wait_for_monitor(shm_in);
+    vms_shm_buffer_wait_for_reader(shm_out);
+    vms_shm_buffer_wait_for_reader(shm_in);
 }
 
 static void event_exit(void) {
@@ -543,8 +544,8 @@ static void event_exit(void) {
     // free(partial_line);
 
     dr_printf("Destroying shared buffers\n");
-    destroy_shared_buffer(pd_in->shm);
-    destroy_shared_buffer(pd_out->shm);
+    vms_shm_buffer_destroy(pd_in->shm);
+    vms_shm_buffer_destroy(pd_out->shm);
 }
 
 static void event_thread_context_init(void *drcontext, bool new_depth) {
