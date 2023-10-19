@@ -136,10 +136,12 @@ static RegisterPass<VarAddr> VRD("vamos-print-vars-addr",
                                   true /* Only looks at CFG */,
                                   true /* Analysis Pass */);
 
+#if LLVM_VERSION_MAJOR < 16
 static RegisterStandardPasses VRDP(
     PassManagerBuilder::EP_FullLinkTimeOptimizationLast,
     [](const PassManagerBuilder &, legacy::PassManagerBase &PM) {
         PM.add(new VarAddr());
     });
+#endif
 
 }

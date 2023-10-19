@@ -1,5 +1,7 @@
 #include <map>
 
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
@@ -7,7 +9,6 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 namespace {
 using namespace llvm;
@@ -357,13 +358,16 @@ bool RaceInstrumentation::runOnBasicBlock(BasicBlock &block) {
 }  // namespace
 
 char RaceInstrumentation::ID = 0;
+
 static RegisterPass<RaceInstrumentation> VRD("vamos-race-instrumentation",
                                              "VAMOS race instrumentation pass",
                                              true /* Only looks at CFG */,
                                              true /* Analysis Pass */);
 
+#if LLVM_VERSION_MAJOR < 16
 static RegisterStandardPasses VRDP(
     PassManagerBuilder::EP_FullLinkTimeOptimizationLast,
     [](const PassManagerBuilder &, legacy::PassManagerBase &PM) {
         PM.add(new RaceInstrumentation());
     });
+#endif
