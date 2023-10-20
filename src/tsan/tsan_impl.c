@@ -49,13 +49,13 @@ struct __vrd_thread_data {
   /* a sync variable for syncronizing the startup with parent */
   _Atomic int wait_for_parent;
 
-  shm_list_embedded list;
+  vms_list_embedded list;
 };
 
 /* thread local data */
 static CACHELINE_ALIGNED _Thread_local struct _thread_data {
   size_t thread_id;
-  shm_eventid last_id;
+  vms_eventid last_id;
   vms_shm_buffer *shmbuf;
   struct __vrd_thread_data *data;
   size_t waited_for_buffer;
@@ -95,7 +95,7 @@ enum {
 /* local cache */
 uint64_t event_kinds[EVENTS_NUM];
 
-shm_list_embedded data_list = {&data_list, &data_list};
+vms_list_embedded data_list = {&data_list, &data_list};
 
 #ifdef LIST_LOCK_MTX
 static mtx_t list_mtx;
@@ -148,16 +148,16 @@ static void sig_handler(int sig) {
     }
   }
 
-  shm_list_embedded_foreach(data, &data_list, list) {
+  vms_list_embedded_foreach(data, &data_list, list) {
     if (data->shmbuf) {
-      buffer_set_destroyed(data->shmbuf);
+      vms_shm_buffer_set_destroyed(data->shmbuf);
     }
   }
 
   if (top_shmbuf) {
     /* This is not atomic, but it works in most cases which is enough for us. */
     print_events_no = true;
-    buffer_set_destroyed(top_shmbuf);
+    vms_shm_buffer_set_destroyed(top_shmbuf);
     top_shmbuf = NULL;
   }
 
@@ -230,7 +230,7 @@ void __vrd_init() {
   mtx_init(&list_mtx, mtx_plain);
 #endif
   /* Initialize the info about this source */
-  top_control = source_control_define(
+  top_control = vms_source_control_define(
       EVENTS_NUM, "read", "tl", "write", "tl", "atomicread", "tl",
       "atomicwrite", "tl", "lock", "tl", "unlock", "tl", "alloc", "tll", "free",
       "tl", "fork", "tl", "join", "tl", "write_n", "tll", "read_n", "tll");
@@ -274,14 +274,14 @@ void __vrd_fini(void) {
   VEC_INIT(running_threads);
 
   lock();
-  shm_list_embedded_foreach_safe(data, tmp, &data_list, list) {
-    shm_list_embedded_remove(&data->list);
+  vms_list_embedded_foreach_safe(data, tmp, &data_list, list) {
+    vms_list_embedded_remove(&data->list);
 
     VEC_PUSH(leaked_threads, &data->thread_id);
 
     if (data->shmbuf) {
       VEC_PUSH(running_threads, &data->thread_id);
-      destroy_shared_sub_buffer(data->shmbuf);
+      vms_shm_buffer_destroy_sub_buffer(data->shmbuf);
       data->shmbuf = NULL;
     }
     free(data);
@@ -320,7 +320,7 @@ void __vrd_fini(void) {
 }
 
 static inline void *start_event(vms_shm_buffer *shm, int type) {
-  shm_event *ev;
+  vms_event *ev;
   while (!(ev = vms_shm_buffer_start_push(shm))) {
     ++thread_data.waited_for_buffer;
   }
@@ -355,14 +355,14 @@ void *__vrd_create_thrd(void *original_fun, void *original_data) {
   data->thread_id = tid;
   data->exited = false;
   data->wait_for_parent = 0;
-  data->shmbuf = create_shared_sub_buffer(thread_data.shmbuf, 0, top_control);
+  data->shmbuf = vms_shm_buffer_create_sub_buffer(thread_data.shmbuf, 0, top_control);
   if (!data->shmbuf) {
     assert(data->shmbuf && "Failed creating buffer");
     abort();
   }
 
   lock();
-  shm_list_embedded_insert_after(&data_list, &data->list);
+  vms_list_embedded_insert_after(&data_list, &data->list);
   unlock();
 
   return data;
@@ -398,7 +398,7 @@ void __vrd_thrd_created(void *data, uint64_t std_tid) {
 }
 
 static void setup_thread(struct __vrd_thread_data *tdata) {
-  assert(data != NULL);
+  assert(tdata != NULL);
 
   thread_data.waited_for_buffer = 0;
   thread_data.last_id = 0;
@@ -416,7 +416,7 @@ static void setup_thread(struct __vrd_thread_data *tdata) {
 static void tear_down_thread(struct __vrd_thread_data *tdata) {
     lock();
     if (tdata->shmbuf) {
-      destroy_shared_sub_buffer(tdata->shmbuf);
+      vms_shm_buffer_destroy_sub_buffer(tdata->shmbuf);
       tdata->shmbuf = NULL;
     }
     unlock();
@@ -475,7 +475,7 @@ void __vrd_exit_main_thread(void) {
 
 static inline struct __vrd_thread_data *_get_data(uint64_t std_tid) {
   struct __vrd_thread_data *data;
-  shm_list_embedded_foreach(data, &data_list, list) {
+  vms_list_embedded_foreach(data, &data_list, list) {
     if (data->std_thread_id == std_tid) {
       return data;
     }
@@ -516,7 +516,7 @@ void __vrd_thrd_joined(void *dataptr) {
   vms_shm_buffer_finish_push(shm);
 
   lock();
-  shm_list_embedded_remove(&data->list);
+  vms_list_embedded_remove(&data->list);
   unlock();
   free(data);
 

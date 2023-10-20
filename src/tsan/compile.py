@@ -4,7 +4,7 @@ import sys
 from subprocess import run, PIPE
 from os.path import dirname, abspath, basename
 
-sys.path.append(f"{abspath(dirname(__file__))}/..")
+sys.path.append(f"{abspath(dirname(__file__))}/../..")
 import config
 
 DIR = abspath(dirname(sys.argv[0]))
