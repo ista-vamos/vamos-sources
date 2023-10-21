@@ -607,6 +607,10 @@ void __tsan_unaligned_write8(void *addr) { write_N(addr, 8); }
 void __tsan_unaligned_write4(void *addr) { write_N(addr, 4); }
 void __tsan_unaligned_write2(void *addr) { write_N(addr, 2); }
 void __tsan_unaligned_write1(void *addr) { __tsan_write1(addr); }
+void *__tsan_memset(void *addr, char c, size_t n) {
+	write_N(addr, n);
+	return memset(addr, c, n);
+}
 
 void __vrd_mutex_lock(void *addr) {
   vms_shm_buffer *shm = thread_data.shmbuf;
