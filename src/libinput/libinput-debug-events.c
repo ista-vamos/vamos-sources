@@ -24,7 +24,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-//#include "config.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -42,10 +41,25 @@
 #include <libinput.h>
 #include <libevdev/libevdev.h>
 
-//#include "libinput-version.h"
-//#include "util-strings.h"
+#include "util-strings.h"
 #include "util-macros.h"
 #include "shared.h"
+
+#include "vamos-buffers/core/event.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
+#include "vamos-buffers/core/signatures.h"
+#include "vamos-buffers/core/source.h"
+
+struct event {
+    vms_event base;
+    unsigned char args[];
+};
+
+static size_t waiting_for_buffer = 0;
+static vms_shm_buffer *buffer;
+static struct event vev;
+
 
 static uint32_t start_time;
 static const uint32_t screen_width = 100;
@@ -341,7 +355,7 @@ print_key_event(struct libinput_event *ev)
 }
 
 static void
-print_motion_event(struct libinput_event *ev)
+handle_motion_event(struct libinput_event *ev)
 {
 	struct libinput_event_pointer *p = libinput_event_get_pointer_event(ev);
 	double x = libinput_event_pointer_get_dx(p);
@@ -350,6 +364,25 @@ print_motion_event(struct libinput_event *ev)
 	double uy = libinput_event_pointer_get_dy_unaccelerated(p);
 
 	print_event_time(libinput_event_pointer_get_time(p));
+
+	unsigned char *addr;
+
+	assert(buffer && "Do not have VAMOS buffer");
+
+	//vev->base.kind = kinds[POINTER_MOTION];
+	vev.base.kind = 10;
+	++vev.base.id;
+        while (!(addr = vms_shm_buffer_start_push(buffer))) {
+          ++waiting_for_buffer;
+        }
+	/* write the header */
+        addr = vms_shm_buffer_partial_push(buffer, addr, &vev.base, sizeof(vms_event));
+	/* write the data */
+        addr = vms_shm_buffer_partial_push(buffer, addr, &x, sizeof(x));
+        addr = vms_shm_buffer_partial_push(buffer, addr, &y, sizeof(y));
+        addr = vms_shm_buffer_partial_push(buffer, addr, &ux, sizeof(ux));
+        addr = vms_shm_buffer_partial_push(buffer, addr, &uy, sizeof(uy));
+        vms_shm_buffer_finish_push(buffer);
 
 	printq("%6.2f/%6.2f (%+6.2f/%+6.2f)\n", x, y, ux, uy);
 }
@@ -849,7 +882,7 @@ print_switch_event(struct libinput_event *ev)
 }
 
 static int
-handle_and_print_events(struct libinput *li)
+handle_and_write_events(struct libinput *li)
 {
 	int rc = -1;
 	struct libinput_event *ev;
@@ -876,7 +909,7 @@ handle_and_print_events(struct libinput *li)
 			print_key_event(ev);
 			break;
 		case LIBINPUT_EVENT_POINTER_MOTION:
-			print_motion_event(ev);
+			handle_motion_event(ev);
 			break;
 		case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
 			print_absmotion_event(ev);
@@ -977,7 +1010,7 @@ mainloop(struct libinput *li)
 	fds.revents = 0;
 
 	/* Handle already-pending device added events */
-	if (handle_and_print_events(li))
+	if (handle_and_write_events(li))
 		fprintf(stderr, "Expected device added events on startup but got none. "
 				"Maybe you don't have the right permissions?\n");
 
@@ -988,7 +1021,7 @@ mainloop(struct libinput *li)
 		clock_gettime(CLOCK_MONOTONIC, &tp);
 		start_time = tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
 		do {
-			handle_and_print_events(li);
+			handle_and_write_events(li);
 		} while (!stop && poll(&fds, 1, -1) > -1);
 	}
 
@@ -997,7 +1030,41 @@ mainloop(struct libinput *li)
 
 static void
 usage(void) {
-	printf("Usage: libinput debug-events [options] [--udev <seat>|--device /dev/input/event0 ...]\n");
+	printf("Usage: vsrc-libinput --shmkey <key> [options] [--udev <seat>|--device /dev/input/event0 ...]\n");
+}
+
+static int init_vamos(const char *shmkey) {
+    const size_t event_types_num = 3;
+    struct vms_source_control *control =
+        vms_source_control_define(event_types_num,
+			"pointer_motion", "dddd",
+			"pointer_motion_abs", "dd",
+			"keyboard_key", "ic"
+			);
+    assert(control);
+
+    const size_t capacity = 128;
+    buffer = vms_shm_buffer_create(shmkey, capacity, control);
+    if (!buffer) {
+	    fprintf(stderr, "Failed creating shm buffer\n");
+	    return -1;
+    }
+    free(control);
+
+    fprintf(stderr, "info: waiting for the monitor to attach... ");
+    if (vms_shm_buffer_wait_for_reader(buffer) < 0) {
+	fprintf(stderr, "Failed waiting for the monitor to attach...\n");
+	vms_shm_buffer_destroy(buffer);
+	return -1;
+    }
+    fprintf(stderr, "done\n");
+
+    size_t events_num;
+    struct vms_event_record *events =
+        vms_shm_buffer_get_avail_events(buffer, &events_num);
+    assert(events_num == 1);
+
+    return 0;
 }
 
 int
@@ -1006,6 +1073,7 @@ main(int argc, char **argv)
 	struct libinput *li;
 	enum tools_backend backend = BACKEND_NONE;
 	const char *seat_or_devices[60] = {NULL};
+	const char *shmkey = NULL;
 	size_t ndevices = 0;
 	bool grab = false;
 	bool verbose = false;
@@ -1023,6 +1091,7 @@ main(int argc, char **argv)
 			OPT_VERBOSE,
 			OPT_SHOW_KEYCODES,
 			OPT_QUIET,
+			OPT_SHMKEY,
 		};
 		static struct option opts[] = {
 			CONFIGURATION_OPTIONS,
@@ -1030,6 +1099,7 @@ main(int argc, char **argv)
 			{ "show-keycodes",             no_argument,       0, OPT_SHOW_KEYCODES },
 			{ "device",                    required_argument, 0, OPT_DEVICE },
 			{ "udev",                      required_argument, 0, OPT_UDEV },
+			{ "shmkey",                    required_argument, 0, OPT_SHMKEY },
 			{ "grab",                      no_argument,       0, OPT_GRAB },
 			{ "verbose",                   no_argument,       0, OPT_VERBOSE },
 			{ "quiet",                     no_argument,       0, OPT_QUIET },
@@ -1053,6 +1123,9 @@ main(int argc, char **argv)
 			break;
 		case OPT_QUIET:
 			be_quiet = true;
+			break;
+		case OPT_SHMKEY:
+			shmkey = optarg;
 			break;
 		case OPT_DEVICE:
 			if (backend == BACKEND_UDEV ||
@@ -1109,6 +1182,11 @@ main(int argc, char **argv)
 		seat_or_devices[0] = "seat0";
 	}
 
+	if (shmkey == NULL) {
+		usage();
+		return EXIT_INVALID_USAGE;
+	}
+
 	memset(&act, 0, sizeof(act));
 	act.sa_sigaction = sighandler;
 	act.sa_flags = SA_SIGINFO;
@@ -1121,6 +1199,9 @@ main(int argc, char **argv)
 
 	li = tools_open_backend(backend, seat_or_devices, verbose, &grab);
 	if (!li)
+		return EXIT_FAILURE;
+
+	if (init_vamos(shmkey) < 0)
 		return EXIT_FAILURE;
 
 	mainloop(li);

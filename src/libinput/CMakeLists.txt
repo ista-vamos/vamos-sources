@@ -13,3 +13,5 @@ target_link_libraries(vsrc-libinput PUBLIC ${LIBUDEV_LIBRARIES})
 target_include_directories(vsrc-libinput PRIVATE ${LIBUDEV_INCLUDE_DIRS})
 target_link_libraries(vsrc-libinput PUBLIC ${LIBINPUT_LIBRARIES})
 target_include_directories(vsrc-libinput PRIVATE ${LIBINPUT_INCLUDE_DIRS})
+
+target_link_libraries(vsrc-libinput  PRIVATE vamos-buffers-client)
