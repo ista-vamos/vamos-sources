@@ -37,6 +37,7 @@ OPTION(BUILD_DYNAMORIO_IF_MISSING "Build DynamoRIO from sources if it is not pre
 
 OPTION(BPF_SOURCES "Build and use eBPF sources" OFF)
 OPTION(LLVM_SOURCES "Build and use LLVM sources" ON)
+OPTION(LIBINPUT_SOURCES "Build libinput sources" ON)
 
 if (BPF_SOURCES)
 	ExternalProject_Add(bcc

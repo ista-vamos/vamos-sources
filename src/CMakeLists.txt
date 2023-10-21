@@ -12,6 +12,10 @@ if (BPF_SOURCES)
 	add_subdirectory(bcc)
 endif()
 
+if (LIBINPUT_SOURCES)
+	add_subdirectory(libinput)
+endif()
+
 add_executable(sendaddr sendaddr.c)
 add_executable(regex regex.c)
 
