@@ -60,6 +60,25 @@ static size_t waiting_for_buffer = 0;
 static vms_shm_buffer *buffer;
 static struct event vev;
 
+enum vamos_event_idx {
+	POINTER_MOTION     = 0,
+	POINTER_MOTION_ABS = 1,
+	KEYBOARD_KEY       = 2,
+};
+
+struct _kind_mapping {
+	const char *name;
+	const char *sig;
+	vms_kind kind;
+} vamos_events[] = {
+	/* the order of events must match the indices
+	 * in the enum vamos_event_idx */
+	{"pointer_motion", "ddddd", 0},
+	{"pointer_motion_abs", "ddd", 0},
+	{"keyboard_key", "dic", 0},
+};
+
+
 
 static uint32_t start_time;
 static const uint32_t screen_width = 100;
@@ -70,6 +89,28 @@ static volatile sig_atomic_t stop = 0;
 static bool be_quiet = false;
 
 #define printq(...) ({ if (!be_quiet)  printf(__VA_ARGS__); })
+
+static unsigned char *
+push_header(vms_kind kind)
+{
+	unsigned char *addr;
+
+	assert(buffer && "Do not have VAMOS buffer");
+
+	vev.base.kind = kind;
+	++vev.base.id;
+        while (!(addr = vms_shm_buffer_start_push(buffer))) {
+          ++waiting_for_buffer;
+        }
+
+	/* write the header */
+        addr = vms_shm_buffer_partial_push(buffer,
+					   addr,
+					   &vev.base,
+					   sizeof(vms_event));
+
+	return addr;
+}
 
 static void
 print_event_header(struct libinput_event *ev)
@@ -191,7 +232,7 @@ print_event_header(struct libinput_event *ev)
 	last_device = dev;
 }
 
-static void
+static inline void
 print_event_time(uint32_t time)
 {
 	printq("%+6.3fs	", start_time ? (time - start_time) / 1000.0 : 0);
@@ -330,17 +371,30 @@ print_device_notify(struct libinput_event *ev)
 }
 
 static void
-print_key_event(struct libinput_event *ev)
+handle_key_event(struct libinput_event *ev)
 {
+	vms_kind kind = vamos_events[KEYBOARD_KEY].kind;
+	if (kind == 0)
+		return;
+
 	struct libinput_event_keyboard *k = libinput_event_get_keyboard_event(ev);
 	enum libinput_key_state state;
 	uint32_t key;
-	const char *keyname;
-
-	print_event_time(libinput_event_keyboard_get_time(k));
-	state = libinput_event_keyboard_get_key_state(k);
 
 	key = libinput_event_keyboard_get_key(k);
+	state = libinput_event_keyboard_get_key_state(k);
+	double time = libinput_event_keyboard_get_time(k);
+
+	unsigned char *addr = push_header(kind);
+        addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
+        addr = vms_shm_buffer_partial_push(buffer, addr, &key, sizeof(key));
+	unsigned char statec = (state == LIBINPUT_KEY_STATE_PRESSED);
+        addr = vms_shm_buffer_partial_push(buffer, addr, &statec, sizeof(char));
+        vms_shm_buffer_finish_push(buffer);
+
+
+	const char *keyname;
+	print_event_time(time);
 	if (!show_keycodes && (key >= KEY_ESC && key < KEY_ZENKAKUHANKAKU)) {
 		keyname = "***";
 		key = -1;
@@ -357,46 +411,56 @@ print_key_event(struct libinput_event *ev)
 static void
 handle_motion_event(struct libinput_event *ev)
 {
+	vms_kind kind = vamos_events[POINTER_MOTION].kind;
+	if (kind == 0)
+		return;
+
 	struct libinput_event_pointer *p = libinput_event_get_pointer_event(ev);
 	double x = libinput_event_pointer_get_dx(p);
 	double y = libinput_event_pointer_get_dy(p);
 	double ux = libinput_event_pointer_get_dx_unaccelerated(p);
 	double uy = libinput_event_pointer_get_dy_unaccelerated(p);
+	double time = libinput_event_pointer_get_time(p);
 
-	print_event_time(libinput_event_pointer_get_time(p));
+	unsigned char *addr = push_header(kind);
 
-	unsigned char *addr;
-
-	assert(buffer && "Do not have VAMOS buffer");
-
-	//vev->base.kind = kinds[POINTER_MOTION];
-	vev.base.kind = 10;
-	++vev.base.id;
-        while (!(addr = vms_shm_buffer_start_push(buffer))) {
-          ++waiting_for_buffer;
-        }
-	/* write the header */
-        addr = vms_shm_buffer_partial_push(buffer, addr, &vev.base, sizeof(vms_event));
 	/* write the data */
+        addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
         addr = vms_shm_buffer_partial_push(buffer, addr, &x, sizeof(x));
         addr = vms_shm_buffer_partial_push(buffer, addr, &y, sizeof(y));
         addr = vms_shm_buffer_partial_push(buffer, addr, &ux, sizeof(ux));
         addr = vms_shm_buffer_partial_push(buffer, addr, &uy, sizeof(uy));
         vms_shm_buffer_finish_push(buffer);
 
-	printq("%6.2f/%6.2f (%+6.2f/%+6.2f)\n", x, y, ux, uy);
+	if (!be_quiet) {
+		print_event_time(time);
+		printf("%6.2f/%6.2f (%+6.2f/%+6.2f)\n", x, y, ux, uy);
+	}
 }
 
 static void
-print_absmotion_event(struct libinput_event *ev)
+handle_absmotion_event(struct libinput_event *ev)
 {
+	vms_kind kind = vamos_events[POINTER_MOTION_ABS].kind;
+	if (kind == 0)
+		return;
+
 	struct libinput_event_pointer *p = libinput_event_get_pointer_event(ev);
 	double x = libinput_event_pointer_get_absolute_x_transformed(
 		p, screen_width);
 	double y = libinput_event_pointer_get_absolute_y_transformed(
 		p, screen_height);
+	double time = libinput_event_pointer_get_time(p);
 
-	print_event_time(libinput_event_pointer_get_time(p));
+	unsigned char *addr = push_header(kind);
+
+	/* write the data */
+        addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
+        addr = vms_shm_buffer_partial_push(buffer, addr, &x, sizeof(x));
+        addr = vms_shm_buffer_partial_push(buffer, addr, &y, sizeof(y));
+        vms_shm_buffer_finish_push(buffer);
+
+	print_event_time(time);
 	printq("%6.2f/%6.2f\n", x, y);
 }
 
@@ -906,13 +970,13 @@ handle_and_write_events(struct libinput *li)
 			print_device_notify(ev);
 			break;
 		case LIBINPUT_EVENT_KEYBOARD_KEY:
-			print_key_event(ev);
+			handle_key_event(ev);
 			break;
 		case LIBINPUT_EVENT_POINTER_MOTION:
 			handle_motion_event(ev);
 			break;
 		case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
-			print_absmotion_event(ev);
+			handle_absmotion_event(ev);
 			break;
 		case LIBINPUT_EVENT_POINTER_BUTTON:
 			print_pointer_button_event(ev);
@@ -1037,9 +1101,12 @@ static int init_vamos(const char *shmkey) {
     const size_t event_types_num = 3;
     struct vms_source_control *control =
         vms_source_control_define(event_types_num,
-			"pointer_motion", "dddd",
-			"pointer_motion_abs", "dd",
-			"keyboard_key", "ic"
+			vamos_events[POINTER_MOTION].name,
+			vamos_events[POINTER_MOTION].sig,
+			vamos_events[POINTER_MOTION_ABS].name,
+			vamos_events[POINTER_MOTION_ABS].sig,
+			vamos_events[KEYBOARD_KEY].name,
+			vamos_events[KEYBOARD_KEY].sig
 			);
     assert(control);
 
@@ -1063,6 +1130,23 @@ static int init_vamos(const char *shmkey) {
     struct vms_event_record *events =
         vms_shm_buffer_get_avail_events(buffer, &events_num);
     assert(events_num == 1);
+
+    struct vms_event_record *event = events;
+    for (int i = 0; i < events_num; ++i) {
+	    if (strcmp(event->name, vamos_events[POINTER_MOTION].name) == 0) {
+		    vamos_events[POINTER_MOTION].kind = event->kind;
+		    printq("POINTER_MOTION kind: %lu\n", event->kind);
+	    } else
+	    if (strcmp(event->name, vamos_events[POINTER_MOTION_ABS].name) == 0) {
+		    vamos_events[POINTER_MOTION_ABS].kind = event->kind;
+		    printq("POINTER_MOTION_ABS kind: %lu\n", event->kind);
+	    } else
+	    if (strcmp(event->name, vamos_events[KEYBOARD_KEY].name) == 0) {
+		    vamos_events[KEYBOARD_KEY].kind = event->kind;
+		    printq("KEYBOARD_KEY kind: %lu\n", event->kind);
+	    }
+	    ++event;
+    }
 
     return 0;
 }
