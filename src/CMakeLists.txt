@@ -16,6 +16,10 @@ if (LIBINPUT_SOURCES)
 	add_subdirectory(libinput)
 endif()
 
+if (WLDBG_SOURCES)
+	add_subdirectory(wldbg)
+endif()
+
 add_executable(sendaddr sendaddr.c)
 add_executable(regex regex.c)
 

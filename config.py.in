@@ -16,3 +16,24 @@ vamos_buffers_C_COMPILER               = "@vamos-buffers_C_COMPILER@"
 vamos_buffers_OPTION_ENABLE_IPO        = "@vamos-buffers_OPTION_ENABLE_IPO@".upper()
 
 vamos_common_PYTHONPATH  = "@vamos-common_PYTHONPATH@"
+
+wldbg_DIR = "@wldbg_DIR@"
+
+from os.path import dirname
+
+def get_cmake_var(name):
+    cache = "@CMAKE_CURRENT_SOURCE_DIR@/CMakeCache.txt"
+    with open(cache, "r") as f:
+        for line in f:
+            if line.startswith(name):
+                parts = line.split("=", 3)
+                if len(parts) != 3:
+                    continue
+                lhs = parts[0]
+                if ":" in lhs:
+                    lhs = lhs[:lhs.find(":")]
+                if lhs != name:
+                    continue
+
+                return parts[2]
+    return None

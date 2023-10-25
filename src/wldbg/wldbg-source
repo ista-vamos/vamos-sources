@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+from subprocess import run
+
+import sys
+from os import readlink
+from os.path import islink, isdir, dirname, abspath
+
+self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
+sys.path.insert(0, abspath(f"{self_path}/../.."))
+
+from config import wldbg_DIR
+
+if not isdir(wldbg_DIR):
+    raise RuntimeError(f"wldbg_DIR={wldbg_DIR} is not valid")
+
+cmd = [f"{wldbg_DIR}/src/wldbg", "-s", abspath(f"{dirname(__file__)}/libwldbg-pass.so")]
+run(cmd, check=True)
+
