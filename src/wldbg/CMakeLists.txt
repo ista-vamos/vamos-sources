@@ -4,3 +4,4 @@ endif()
 
 add_library(wldbg-pass SHARED pass.c)
 target_include_directories(wldbg-pass PRIVATE ${wldbg_DIR}/src)
+target_link_libraries(wldbg-pass PUBLIC vamos-buffers-client)
