@@ -762,7 +762,7 @@ static void event_exit(void) {
             continue;
 
         if (!vms_list_embedded_empty(&lines[i].list)) {
-            if (buffer_monitor_attached(shmbuf[i])) {
+            if (vms_shm_buffer_reader_is_ready(shmbuf[i])) {
                 dump_lines(i);
                 assert(0 && "Have unprocessed lines");
             } /* else the monitor probably crashed and it makes
