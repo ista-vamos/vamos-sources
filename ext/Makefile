@@ -11,3 +11,13 @@ dynamorio-configure: dynamorio-clone
 dynamorio-clone:
 	test -f dynamorio/CMakeLists.txt || git clone https://github.com/DynamoRIO/dynamorio dynamorio
 	mkdir -p dynamorio/build
+
+wldbg: wldbg-configure
+	+make -C wldbg
+
+wldbg-configure: wldbg-clone
+	cd wldbg && ./autogen.sh
+
+wldbg-clone:
+	test -f wldbg/configure.ac || git clone https://github.com/mchalupa/wldbg wldbg
+

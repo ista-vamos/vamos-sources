@@ -1,5 +1,11 @@
 if (NOT wldbg_DIR)
-	message(FATAL_ERROR "Need to know where wldbg is. Set wldbg_DIR to the root directory of wldbg" )
+        find_program(WLDBG_EXT NAMES wldbg PATHS ${CMAKE_SOURCE_DIR}/ext/wldbg/src NO_DEFAULT_PATH)
+        if (WLDBG_EXT)
+	        message(STATUS "Assuming that wldbg is in '${CMAKE_SOURCE_DIR}/ext/wldbg/'. To use a different build, set wldbg_DIR to the root directory of wldbg" )
+                set(wldbg_DIR ${CMAKE_SOURCE_DIR}/ext/wldbg)
+        else()
+	        message(FATAL_ERROR "Need to know where wldbg is. Set wldbg_DIR to the root directory of wldbg or build wldbg with\n\nmake -c ext wldbg" )
+        endif()
 endif()
 
 add_library(wldbg-pass SHARED pass.c)
