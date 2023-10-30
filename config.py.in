@@ -18,6 +18,7 @@ vamos_buffers_OPTION_ENABLE_IPO        = "@vamos-buffers_OPTION_ENABLE_IPO@".upp
 vamos_common_PYTHONPATH  = "@vamos-common_PYTHONPATH@"
 
 wldbg_DIR = "@wldbg_DIR@"
+wldbg_EXE = "@WLDBG@"
 
 from os.path import dirname
 

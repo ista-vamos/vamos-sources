@@ -4,17 +4,17 @@ from subprocess import run
 
 import sys
 from os import readlink
-from os.path import islink, isdir, dirname, abspath
+from os.path import islink, isfile, dirname, abspath
 
 self_path = abspath(dirname(readlink(__file__) if islink(__file__) else __file__))
 sys.path.insert(0, abspath(f"{self_path}/../.."))
 
-from config import wldbg_DIR
+from config import wldbg_EXE
 
-if not isdir(wldbg_DIR):
-    raise RuntimeError(f"wldbg_DIR={wldbg_DIR} is not valid")
+if not isfile(wldbg_EXE):
+    raise RuntimeError(f"wldbg_EXE='{wldbg_EXE}' is not valid")
 
-cmd = [f"{wldbg_DIR}/src/wldbg", "-s", abspath(f"{dirname(__file__)}/libwldbg-pass.so"), "/vamos-wldbg"]
+cmd = [f"{wldbg_EXE}", "-s", abspath(f"{dirname(__file__)}/libwldbg-pass.so"), "/vamos-wldbg"]
 
 print("> ", " ".join(cmd))
 run(cmd, check=True)
