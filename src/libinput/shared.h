@@ -121,7 +121,8 @@ struct tools_options {
 	int dwtp;
 	enum libinput_config_accel_profile profile;
 	char disable_pattern[64];
-	enum libinput_config_accel_type custom_type;
+	/* accel type (enum libinput_config_accel_type) */
+    int custom_type;
 	double custom_step;
 	size_t custom_npoints;
 	double *custom_points;

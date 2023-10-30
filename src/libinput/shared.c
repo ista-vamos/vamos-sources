@@ -115,7 +115,7 @@ tools_init_options(struct tools_options *options)
 	static double points[] = {0.0, 1.0};
 	options->custom_points = points;
 	options->custom_npoints = ARRAY_LENGTH(points);
-	options->custom_type = LIBINPUT_ACCEL_TYPE_FALLBACK;
+	options->custom_type = 0; /* LIBINPUT_ACCEL_TYPE_FALLBACK; */
 	options->custom_step = 1.0;
 }
 
@@ -179,12 +179,14 @@ tools_parse_option(int option,
 	case OPT_DWT_DISABLE:
 		options->dwt = LIBINPUT_CONFIG_DWT_DISABLED;
 		break;
+#ifdef LIBINPUT_CONFIG_DWTP_ENABLED
 	case OPT_DWTP_ENABLE:
 		options->dwtp = LIBINPUT_CONFIG_DWTP_ENABLED;
 		break;
 	case OPT_DWTP_DISABLE:
 		options->dwtp = LIBINPUT_CONFIG_DWTP_DISABLED;
 		break;
+#endif
 	case OPT_CLICK_METHOD:
 		if (!optarg)
 			return 1;
@@ -255,8 +257,10 @@ tools_parse_option(int option,
 			options->profile = LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE;
 		else if (streq(optarg, "flat"))
 		      options->profile = LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT;
+                /*
 		else if (streq(optarg, "custom"))
 		      options->profile = LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM;
+                      */
 		else
 		      return 1;
 		break;
@@ -297,6 +301,7 @@ tools_parse_option(int option,
 			return 1;
 		options->custom_step = strtod(optarg, NULL);
 		break;
+#ifdef LIBINPUT_ACCEL_TYPE_FALLBACK
 	case OPT_CUSTOM_TYPE:
 		if (!optarg)
 			return 1;
@@ -312,6 +317,7 @@ tools_parse_option(int option,
 			return 1;
 		}
 		break;
+#endif
 	case OPT_ROTATION_ANGLE:
 		if (!optarg)
 			return 1;
@@ -479,8 +485,10 @@ tools_device_apply_config(struct libinput_device *device,
 	if (options->dwt != -1)
 		libinput_device_config_dwt_set_enabled(device, options->dwt);
 
+        /*
 	if (options->dwtp != -1)
 		libinput_device_config_dwtp_set_enabled(device, options->dwtp);
+                */
 
 	if (options->click_method != (enum libinput_config_click_method)-1)
 		libinput_device_config_click_set_method(device, options->click_method);
@@ -503,6 +511,7 @@ tools_device_apply_config(struct libinput_device *device,
 								 options->profile);
 	}
 
+        /*
 	if (options->profile == LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM) {
 		struct libinput_config_accel *config =
 			libinput_config_accel_create(LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM);
@@ -514,6 +523,7 @@ tools_device_apply_config(struct libinput_device *device,
 		libinput_device_config_accel_apply(device, config);
 		libinput_config_accel_destroy(config);
 	}
+        */
 
 	if (options->angle != 0)
 		libinput_device_config_rotation_set_angle(device, options->angle % 360);
