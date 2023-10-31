@@ -117,7 +117,7 @@ struct vms_source_control *sub_control;
 static vms_shm_buffer *init_vamos(const char *shmkey) {
 
   struct vms_source_control *top_control =
-      vms_source_control_define(2, "client_new", "l", "client_exit", "l");
+      vms_source_control_define(2, "client_new", "i", "client_exit", "i");
   if (!top_control) {
     fprintf(stderr, "%s:%d: Failed defining source control\n", __FILE__,
             __LINE__);
@@ -187,7 +187,7 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
 
   printf("CREATING SUBBUFFER\n");
 
-  /* TODO top_buffer send new client found */
+  /* TODO new client found */
   assert(top_buffer && "No top-level SHM buffer");
   assert(sub_control);
   const size_t capacity = 100;
@@ -199,14 +199,6 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
     return NULL;
   }
 
-  fprintf(stderr, "info: waiting for the monitor to attach... ");
-  if (vms_shm_buffer_wait_for_reader(buffer) < 0) {
-    fprintf(stderr, "Failed waiting for the monitor to attach...\n");
-    vms_shm_buffer_destroy(buffer);
-    return NULL;
-  }
-  fprintf(stderr, "done\n");
-
   data = calloc(1, sizeof *data);
   if (!data) {
     fprintf(stderr, "Failed memory allocation");
@@ -214,6 +206,33 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
   }
 
   data->buffer = buffer;
+
+
+  int pid = wldbg_connection_get_client_pid(msg->connection);
+
+  /* Notify VAMOS about a new client (it must be done before waiting for the monitor to attach) */
+  unsigned char *addr;
+  while (!(addr = vms_shm_buffer_start_push(top_buffer))) {
+    ++waiting_for_buffer;
+  }
+
+  ++top_buffer_eventid;
+  addr = vms_shm_buffer_partial_push(top_buffer, addr,
+                                     &client_new_kind,
+                                     sizeof(vms_kind));
+  addr = vms_shm_buffer_partial_push(top_buffer, addr, &top_buffer_eventid,
+                                     sizeof(vms_eventid));
+  addr = vms_shm_buffer_partial_push(top_buffer, addr, &pid,
+                                     sizeof(pid));
+  vms_shm_buffer_finish_push(top_buffer);
+
+  fprintf(stderr, "[%d] info: waiting for the monitor to attach... ", pid);
+  if (vms_shm_buffer_wait_for_reader(buffer) < 0) {
+    fprintf(stderr, "Failed waiting for the monitor to attach...\n");
+    vms_shm_buffer_destroy(buffer);
+    return NULL;
+  }
+  fprintf(stderr, "done\n");
 
   size_t events_num;
   struct vms_event_record *events =
@@ -373,23 +392,25 @@ void handle_pointer_message(struct wldbg_resolved_message *rm,
   if (strcmp(wl_message->name, "motion") == 0) {
     unsigned char *addr = data_ptr(data);
     ++data->next_id;
-    printf("SEND: %lu of %lu\n", data->next_id,
-           data->events[POINTER_MOTION].kind);
+    printf("SEND: %lu of %lu\n", data->next_id, data->events[POINTER_MOTION].kind);
     addr = vms_shm_buffer_partial_push(data->buffer, addr,
                                        &data->events[POINTER_MOTION].kind,
                                        sizeof(vms_kind));
     addr = vms_shm_buffer_partial_push(data->buffer, addr, &data->next_id,
                                        sizeof(vms_eventid));
+
+#ifndef NDEBUG
+    size_t n = 0;
+#endif
+    while((arg = wldbg_resolved_message_next_argument(rm))) {
+      assert(n == 0 || arg->type == 'f');
+      assert(n != 0 || arg->type == 'u');
+      addr = vms_shm_buffer_partial_push(data->buffer, addr,
+		      			 arg->data, sizeof(uint32_t));
+      assert(n++ <= 3);
+    }
+    assert(n == 3);
+
     vms_shm_buffer_finish_push(data->buffer);
   }
-
-  /*
-  printf("event/request: %s\n", rm->wl_message->name);
-  while((arg = wldbg_resolved_message_next_argument(rm))) {
-          assert(arg != NULL);
-          printf("  pos=%u, p=%u\n", pos, arg->data ? *((uint32_t *)arg->data) :
-  0);
-          ++pos;
-  }
-  */
 }

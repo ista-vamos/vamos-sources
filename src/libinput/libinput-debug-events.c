@@ -1131,7 +1131,6 @@ static int init_vamos(const char *shmkey) {
     size_t events_num;
     struct vms_event_record *events =
         vms_shm_buffer_get_avail_events(buffer, &events_num);
-    assert(events_num == 1);
 
     struct vms_event_record *event = events;
     for (int i = 0; i < events_num; ++i) {
