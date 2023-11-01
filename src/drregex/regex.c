@@ -9,12 +9,11 @@
 
 #include "dr_api.h"
 #include "drmgr.h"
-
-#include "vamos-buffers/shmbuf/buffer.h"
-#include "vamos-buffers/shmbuf/client.h"
 #include "vamos-buffers/core/event.h"
 #include "vamos-buffers/core/signatures.h"
 #include "vamos-buffers/core/source.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
 #include "vamos-buffers/streams/stream-drregex.h" /* event type */
 
 #ifdef UNIX
@@ -34,7 +33,7 @@
 #endif
 
 #ifndef WITH_STDOUT
-//#define dr_printf(...) do{}while(0)
+// #define dr_printf(...) do{}while(0)
 #endif
 
 #define MAXMATCH 20
@@ -153,9 +152,9 @@ static void parse_line(bool iswrite, per_thread_t *data, char *line) {
         /* push the arguments of the event */
         for (const char *o = signatures[i]; *o && m <= MAXMATCH; ++o, ++m) {
             if (*o == 'L') { /* user wants the whole line */
-              addr =
-                  vms_shm_buffer_partial_push_str(shm, addr, ev.base.id, line);
-              continue;
+                addr = vms_shm_buffer_partial_push_str(shm, addr, ev.base.id,
+                                                       line);
+                continue;
             }
             if (*o != 'M') {
                 if ((int)matches[m].rm_so < 0) {

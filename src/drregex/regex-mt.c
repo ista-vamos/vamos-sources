@@ -11,17 +11,16 @@
 
 #include "dr_api.h"
 #include "drmgr.h"
-
-#include "vamos-buffers/shmbuf/buffer.h"
-#include "vamos-buffers/shmbuf/client.h"
 #include "vamos-buffers/core/list-embedded.h"
-#include "vamos-buffers/core/vms_string-macro.h"
 #include "vamos-buffers/core/signatures.h"
 #include "vamos-buffers/core/source.h"
 #include "vamos-buffers/core/spsc_ringbuf.h"
-#include "vamos-buffers/streams/stream-drregex.h" /* event type */
 #include "vamos-buffers/core/utils.h"
 #include "vamos-buffers/core/vector-macro.h"
+#include "vamos-buffers/core/vms_string-macro.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
+#include "vamos-buffers/streams/stream-drregex.h" /* event type */
 
 #define warn(...) dr_fprintf(STDERR, "warning: " __VA_ARGS__)
 #define info(...) dr_fprintf(STDERR, __VA_ARGS__)
@@ -43,7 +42,7 @@
 #endif
 
 #ifndef WITH_STDOUT
-//#define dr_printf(...) do{}while(0)
+// #define dr_printf(...) do{}while(0)
 #endif
 
 #define MAXMATCH 20

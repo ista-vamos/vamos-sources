@@ -225,7 +225,8 @@ static void event_thread_context_init(void *drcontext, bool new_depth) {
         data->thread = ++thread_num;
         /* TODO: for now we create a buffer of the same type as the top buffer
          */
-        data->shm = vms_shm_buffer_create_sub_buffer(top_shmbuffer, 0, top_control);
+        data->shm =
+            vms_shm_buffer_create_sub_buffer(top_shmbuffer, 0, top_control);
         data->waiting_for_buffer = 0;
         DR_ASSERT(data->shm && "Failed creating buffer");
     } else {
@@ -312,7 +313,7 @@ static void at_call_generic(size_t fun_idx, const char *sig) {
     vms_shm_buffer *shm = data->shm;
     void *shmaddr;
     while (!(shmaddr = vms_shm_buffer_start_push(shm))) {
-            ++data->waiting_for_buffer;
+        ++data->waiting_for_buffer;
     }
     DR_ASSERT(fun_idx < events_num);
     vms_event_funcall *ev = (vms_event_funcall *)shmaddr;

@@ -34,7 +34,7 @@
 #endif
 
 #ifndef WITH_STDOUT
-//#define dr_printf(...) do{}while(0)
+// #define dr_printf(...) do{}while(0)
 #endif
 
 #define MAXMATCH 20

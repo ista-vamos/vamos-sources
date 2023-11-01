@@ -5,10 +5,10 @@
 #include <string.h>
 
 #include "vamos-buffers/core/event.h"
-#include "vamos-buffers/shmbuf/buffer.h"
-#include "vamos-buffers/shmbuf/client.h"
 #include "vamos-buffers/core/signatures.h"
 #include "vamos-buffers/core/source.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
 
 #define MAXMATCH 20
 

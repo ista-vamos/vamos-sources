@@ -10,13 +10,13 @@
 
 #include "btf_helpers.h"
 #include "errno_helpers.h"
+#include "syswrite.skel.h"
+#include "trace_helpers.h"
 #include "vamos-buffers/core/event.h"
 #include "vamos-buffers/core/signatures.h"
 #include "vamos-buffers/core/source.h"
 #include "vamos-buffers/shmbuf/buffer.h"
 #include "vamos-buffers/shmbuf/client.h"
-#include "syswrite.skel.h"
-#include "trace_helpers.h"
 
 #define warn(...) fprintf(stderr, __VA_ARGS__)
 
@@ -109,8 +109,8 @@ static void parse_line(bool iswrite, const struct event *e, char *line) {
         /* push the arguments of the event */
         for (const char *o = signatures[i]; *o && m <= MAXMATCH; ++o, ++m) {
             if (*o == 'L') { /* user wants the whole line */
-              addr = vms_shm_buffer_partial_push_str(shm, addr, ev.id, line);
-              continue;
+                addr = vms_shm_buffer_partial_push_str(shm, addr, ev.id, line);
+                continue;
             }
             if (*o != 'M') {
                 if ((int)matches[m].rm_so < 0) {

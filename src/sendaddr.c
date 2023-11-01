@@ -5,10 +5,10 @@
 #include <string.h>
 
 #include "vamos-buffers/core/event.h"
-#include "vamos-buffers/shmbuf/buffer.h"
-#include "vamos-buffers/shmbuf/client.h"
 #include "vamos-buffers/core/signatures.h"
 #include "vamos-buffers/core/source.h"
+#include "vamos-buffers/shmbuf/buffer.h"
+#include "vamos-buffers/shmbuf/client.h"
 
 #define MAXMATCH 20
 
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     void *addr, *p;
     while (--N > 0) {
         while (!(addr = vms_shm_buffer_start_push(shm))) {
-          ++waiting_for_buffer;
+            ++waiting_for_buffer;
         }
         ++ev.base.id;
         p = addr;
