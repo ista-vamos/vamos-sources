@@ -50,7 +50,7 @@
 #include "wldbg-parse-message.h"
 #include "wldbg-pass.h"
 
-// #define PRINT_EVENTS
+//#define PRINT_EVENTS
 
 #ifdef PRINT_EVENTS
 #define print_message(m) wldbg_message_print((m))
@@ -259,6 +259,7 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
 
     struct vms_event_record *event = events;
     for (int i = 0; i < events_num; ++i) {
+	printf("REC %s -> %lu\n", event->name, event->kind);
         if (strcmp(event->name, vamos_events[POINTER_MOTION].name) == 0) {
             data->events[POINTER_MOTION].kind = event->kind;
         } else if (strcmp(event->name, vamos_events[POINTER_BUTTON].name) ==
@@ -384,9 +385,13 @@ void send_event(struct wldbg_message *message) {
 }
 
 /* write an event that has all arguments uint32_t */
-void write_event_args32(struct connection_data *data,
-                        struct wldbg_resolved_message *rm,
-                        enum vamos_event_idx event_idx) {
+int write_event_args32(struct connection_data *data,
+                       struct wldbg_resolved_message *rm,
+                       enum vamos_event_idx event_idx) {
+    /* monitor does not want this event */
+    if (data->events[event_idx].kind == 0)
+	return 0;
+
     struct wldbg_resolved_arg *arg;
     unsigned char *addr = data_ptr(data);
     ++data->next_id;
@@ -409,6 +414,7 @@ void write_event_args32(struct connection_data *data,
     assert(n++ == strlen(vamos_events[event_idx].sig));
 
     vms_shm_buffer_finish_push(data->buffer);
+    return 1;
 }
 
 int handle_keyboard_message(struct wldbg_resolved_message *rm,
@@ -416,13 +422,8 @@ int handle_keyboard_message(struct wldbg_resolved_message *rm,
     unsigned int pos = 0;
     const struct wl_message *wl_message = rm->wl_message;
 
-    enum vamos_event_idx event_idx = INVALID_IDX;
-    if (strcmp(wl_message->name, "key") == 0)
-        event_idx = KEYBOARD_KEY;
-
-    if (event_idx == KEYBOARD_KEY) {
-        write_event_args32(data, rm, event_idx);
-        return 1;
+    if (strcmp(wl_message->name, "key") == 0) {
+        return write_event_args32(data, rm, KEYBOARD_KEY);
     }
 
     return 0;
@@ -435,14 +436,10 @@ int handle_pointer_message(struct wldbg_resolved_message *rm,
     struct wldbg_resolved_arg *arg;
 
     enum vamos_event_idx event_idx = INVALID_IDX;
-    if (strcmp(wl_message->name, "motion") == 0)
-        event_idx = POINTER_MOTION;
-    else if (strcmp(wl_message->name, "button") == 0)
-        event_idx = POINTER_BUTTON;
-
-    if (event_idx == POINTER_MOTION || event_idx == POINTER_BUTTON) {
-        write_event_args32(data, rm, event_idx);
-        return 1;
+    if (strcmp(wl_message->name, "motion") == 0) {
+        return write_event_args32(data, rm, POINTER_MOTION);
+    } else if (strcmp(wl_message->name, "button") == 0) {
+        return write_event_args32(data, rm, POINTER_BUTTON);
     }
 
     return 0;

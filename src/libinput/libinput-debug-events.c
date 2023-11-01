@@ -48,6 +48,8 @@
 #include "vamos-buffers/shmbuf/buffer.h"
 #include "vamos-buffers/shmbuf/client.h"
 
+#define NO_OUTPUT
+
 struct event {
     vms_event base;
     unsigned char args[];
@@ -85,11 +87,15 @@ static bool show_keycodes;
 static volatile sig_atomic_t stop = 0;
 static bool be_quiet = false;
 
+#ifdef NO_OUTPUT
+#define printq(...)
+#else
 #define printq(...)              \
     ({                           \
         if (!be_quiet)           \
             printf(__VA_ARGS__); \
     })
+#endif
 
 static unsigned char *push_header(vms_kind kind) {
     unsigned char *addr;
@@ -400,10 +406,10 @@ static void handle_motion_event(struct libinput_event *ev) {
     addr = vms_shm_buffer_partial_push(buffer, addr, &uy, sizeof(uy));
     vms_shm_buffer_finish_push(buffer);
 
-    if (!be_quiet) {
-        print_event_time(time);
-        printf("%6.2f/%6.2f (%+6.2f/%+6.2f)\n", x, y, ux, uy);
-    }
+#ifndef NO_OUTPUT
+    print_event_time(time);
+    printf("%6.2f/%6.2f (%+6.2f/%+6.2f)\n", x, y, ux, uy);
+#endif
 }
 
 static void handle_absmotion_event(struct libinput_event *ev) {
