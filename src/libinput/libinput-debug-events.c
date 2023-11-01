@@ -60,7 +60,8 @@ static struct event vev;
 enum vamos_event_idx {
     POINTER_MOTION = 0,
     POINTER_MOTION_ABS = 1,
-    KEYBOARD_KEY = 2,
+    POINTER_BUTTON = 2,
+    KEYBOARD_KEY = 3,
 };
 
 struct _kind_mapping {
@@ -72,6 +73,7 @@ struct _kind_mapping {
      * in the enum vamos_event_idx */
     {"pointer_motion", "ddddd", 0},
     {"pointer_motion_abs", "ddd", 0},
+    {"pointer_button", "dii", 0},
     {"keyboard_key", "dic", 0},
 };
 
@@ -361,6 +363,7 @@ static void handle_key_event(struct libinput_event *ev) {
     addr = vms_shm_buffer_partial_push(buffer, addr, &statec, sizeof(char));
     vms_shm_buffer_finish_push(buffer);
 
+#ifndef NO_OUTPUT
     const char *keyname;
     print_event_time(time);
     if (!show_keycodes && (key >= KEY_ESC && key < KEY_ZENKAKUHANKAKU)) {
@@ -372,6 +375,7 @@ static void handle_key_event(struct libinput_event *ev) {
     }
     printq("%s (%d) %s\n", keyname, key,
            state == LIBINPUT_KEY_STATE_PRESSED ? "pressed" : "released");
+#endif
 }
 
 static void handle_motion_event(struct libinput_event *ev) {
@@ -426,22 +430,34 @@ static void handle_absmotion_event(struct libinput_event *ev) {
     printq("%6.2f/%6.2f\n", x, y);
 }
 
-static void print_pointer_button_event(struct libinput_event *ev) {
+static void handle_pointer_button_event(struct libinput_event *ev) {
+    vms_kind kind = vamos_events[POINTER_BUTTON].kind;
+    if (kind == 0)
+        return;
+
     struct libinput_event_pointer *p = libinput_event_get_pointer_event(ev);
     enum libinput_button_state state;
-    const char *buttonname;
     int button;
 
-    print_event_time(libinput_event_pointer_get_time(p));
-
+    double time = libinput_event_pointer_get_time(p);
     button = libinput_event_pointer_get_button(p);
-    buttonname = libevdev_event_code_get_name(EV_KEY, button);
-
     state = libinput_event_pointer_get_button_state(p);
+
+    unsigned char *addr = push_header(kind);
+    addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
+    addr = vms_shm_buffer_partial_push(buffer, addr, &button, sizeof(button));
+    unsigned char statec = (state == LIBINPUT_BUTTON_STATE_PRESSED);
+    addr = vms_shm_buffer_partial_push(buffer, addr, &statec, sizeof(char));
+    vms_shm_buffer_finish_push(buffer);
+
+#ifndef NO_OUTPUT
+    const char *buttonname = libevdev_event_code_get_name(EV_KEY, button);
+    print_event_time(time);
     printq("%s (%d) %s, seat count: %u\n", buttonname ? buttonname : "???",
            button,
            state == LIBINPUT_BUTTON_STATE_PRESSED ? "pressed" : "released",
            libinput_event_pointer_get_seat_button_count(p));
+#endif
 }
 
 static void print_tablet_axes(struct libinput_event_tablet_tool *t) {
@@ -892,7 +908,7 @@ static int handle_and_write_events(struct libinput *li) {
                 handle_absmotion_event(ev);
                 break;
             case LIBINPUT_EVENT_POINTER_BUTTON:
-                print_pointer_button_event(ev);
+                handle_pointer_button_event(ev);
                 break;
             case LIBINPUT_EVENT_POINTER_AXIS:
                 /* ignore */
@@ -1009,11 +1025,16 @@ static void usage(void) {
 }
 
 static int init_vamos(const char *shmkey) {
-    const size_t event_types_num = 3;
+    const size_t event_types_num = 4;
     struct vms_source_control *control = vms_source_control_define(
-        event_types_num, vamos_events[POINTER_MOTION].name,
-        vamos_events[POINTER_MOTION].sig, vamos_events[POINTER_MOTION_ABS].name,
-        vamos_events[POINTER_MOTION_ABS].sig, vamos_events[KEYBOARD_KEY].name,
+        sizeof vamos_events / sizeof vamos_events[0],
+	vamos_events[POINTER_MOTION].name,
+        vamos_events[POINTER_MOTION].sig,
+	vamos_events[POINTER_MOTION_ABS].name,
+        vamos_events[POINTER_MOTION_ABS].sig,
+	vamos_events[POINTER_BUTTON].name,
+        vamos_events[POINTER_BUTTON].sig,
+	vamos_events[KEYBOARD_KEY].name,
         vamos_events[KEYBOARD_KEY].sig);
     assert(control);
 
@@ -1041,14 +1062,13 @@ static int init_vamos(const char *shmkey) {
     for (int i = 0; i < events_num; ++i) {
         if (strcmp(event->name, vamos_events[POINTER_MOTION].name) == 0) {
             vamos_events[POINTER_MOTION].kind = event->kind;
-            printq("POINTER_MOTION kind: %lu\n", event->kind);
         } else if (strcmp(event->name, vamos_events[POINTER_MOTION_ABS].name) ==
                    0) {
             vamos_events[POINTER_MOTION_ABS].kind = event->kind;
-            printq("POINTER_MOTION_ABS kind: %lu\n", event->kind);
+        } else if (strcmp(event->name, vamos_events[POINTER_BUTTON].name) == 0) {
+            vamos_events[POINTER_BUTTON].kind = event->kind;
         } else if (strcmp(event->name, vamos_events[KEYBOARD_KEY].name) == 0) {
             vamos_events[KEYBOARD_KEY].kind = event->kind;
-            printq("KEYBOARD_KEY kind: %lu\n", event->kind);
         }
         ++event;
     }
