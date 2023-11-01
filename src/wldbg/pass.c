@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 Marek Chalupa
- * Copyright (c) ISTA Austria
+ * Copyright (c) 2023 ISTA Austria
  *
  * Code is based on the example pass from wldbg
  *
@@ -52,6 +52,14 @@
 #include "vamos-buffers/shmbuf/buffer.h"
 #include "vamos-buffers/shmbuf/client.h"
 
+// #define PRINT_EVENTS
+
+#ifdef PRINT_EVENTS
+#define print_message(m) wldbg_message_print((m))
+#else
+#define print_message(m)
+#endif
+
 static void send_event(struct wldbg_message *message);
 
 struct pass_data {
@@ -73,9 +81,23 @@ vms_eventid top_buffer_eventid;
 
 static size_t waiting_for_buffer = 0;
 
+/* To add a new traced event,
+ *   1) add its index into this enum here,
+ *   2) add an entry into `vamos_events`,
+ *   3) add it into `sub_control`
+ *   4) register it in `connection_data` function.
+ *   5) add a handler to it
+ * Remember that in steps 1)-2) the order of the events does matter,
+ * meaning that POINTER_MOTION _is_ the index of "pointer_motion" entry
+ * in `vamos_events`.
+ */
 enum vamos_event_idx {
-  POINTER_MOTION = 0,
-  KEYBOARD_KEY = 1,
+  /* IMPORTANT: these are indices of an array, so they must be 0, 1, ... */
+  POINTER_MOTION =  0,
+  POINTER_BUTTON =  1,
+  KEYBOARD_KEY   =  2,
+  LAST_IDX = KEYBOARD_KEY,
+  INVALID_IDX = 0xffff
 };
 
 struct kind_mapping {
@@ -86,6 +108,7 @@ struct kind_mapping {
     /* the order of events must match the indices
      * in the enum vamos_event_idx */
     {"pointer_motion", "iii", 0},
+    {"pointer_button", "iiii", 0},
     {"keyboard_key", "iiii", 0},
 };
 
@@ -97,11 +120,11 @@ struct connection_data {
   struct kind_mapping events[sizeof vamos_events / sizeof vamos_events[0]];
 };
 
-static void handle_keyboard_message(struct wldbg_resolved_message *rm,
-                                    struct connection_data *data);
-
-static void handle_pointer_message(struct wldbg_resolved_message *rm,
+static int handle_keyboard_message(struct wldbg_resolved_message *rm,
                                    struct connection_data *data);
+
+static int handle_pointer_message(struct wldbg_resolved_message *rm,
+                                  struct connection_data *data);
 
 static unsigned char *data_ptr(struct connection_data *data) {
   unsigned char *addr;
@@ -127,6 +150,7 @@ static vms_shm_buffer *init_vamos(const char *shmkey) {
   sub_control = vms_source_control_define(
       sizeof vamos_events / sizeof vamos_events[0],
       vamos_events[POINTER_MOTION].name, vamos_events[POINTER_MOTION].sig,
+      vamos_events[POINTER_BUTTON].name, vamos_events[POINTER_BUTTON].sig,
       vamos_events[KEYBOARD_KEY].name, vamos_events[KEYBOARD_KEY].sig);
   if (!sub_control) {
     fprintf(stderr, "%s:%d: Failed defining source control\n", __FILE__,
@@ -160,7 +184,6 @@ static vms_shm_buffer *init_vamos(const char *shmkey) {
 
   struct vms_event_record *event = events;
   for (int i = 0; i < events_num; ++i) {
-    printf("event-kind kind: %lu\n", event->kind);
     if (strcmp(event->name, "client_new") == 0) {
       client_new_kind = event->kind;
     } else if (strcmp(event->name, "client_exit") == 0) {
@@ -185,7 +208,9 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
     return data;
   }
 
-  printf("CREATING SUBBUFFER\n");
+  int pid = wldbg_connection_get_client_pid(msg->connection);
+
+  fprintf(stderr, "Creating a new sub-buffer for PID %d\n", pid);
 
   /* TODO new client found */
   assert(top_buffer && "No top-level SHM buffer");
@@ -207,8 +232,6 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
 
   data->buffer = buffer;
 
-
-  int pid = wldbg_connection_get_client_pid(msg->connection);
 
   /* Notify VAMOS about a new client (it must be done before waiting for the monitor to attach) */
   unsigned char *addr;
@@ -237,16 +260,16 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
   size_t events_num;
   struct vms_event_record *events =
       vms_shm_buffer_get_avail_events(buffer, &events_num);
+  assert(events_num <= LAST_IDX + 1);
 
   struct vms_event_record *event = events;
   for (int i = 0; i < events_num; ++i) {
-    printf("event-kind kind: %lu\n", event->kind);
     if (strcmp(event->name, vamos_events[POINTER_MOTION].name) == 0) {
       data->events[POINTER_MOTION].kind = event->kind;
-      printf("POINTER_MOTION kind: %lu\n", event->kind);
+    } else if (strcmp(event->name, vamos_events[POINTER_BUTTON].name) == 0) {
+      data->events[POINTER_BUTTON].kind = event->kind;
     } else if (strcmp(event->name, vamos_events[KEYBOARD_KEY].name) == 0) {
       data->events[KEYBOARD_KEY].kind = event->kind;
-      printf("KEYBOARD_KEY kind: %lu\n", event->kind);
     }
     ++event;
   }
@@ -352,65 +375,83 @@ void send_event(struct wldbg_message *message) {
   }
 
   if (rm.wl_interface == &wl_pointer_interface) {
-    printf("%c: ", message->from == SERVER ? 'S' : 'C');
-    wldbg_message_print(message);
-    handle_pointer_message(&rm, data);
+    if (handle_pointer_message(&rm, data))
+        print_message(message);
   }
 
   if (rm.wl_interface == &wl_keyboard_interface) {
-    printf("%c: ", message->from == SERVER ? 'S' : 'C');
-    wldbg_message_print(message);
-    handle_keyboard_message(&rm, data);
+    if (handle_keyboard_message(&rm, data))
+        print_message(message);
   }
 
   return;
 }
 
-void handle_keyboard_message(struct wldbg_resolved_message *rm,
-                             struct connection_data *data) {
-  unsigned int pos = 0;
-  const struct wl_message *wl_message = rm->wl_message;
-  struct wldbg_resolved_arg *arg;
-
-  /*
-  printf("event/request: %s\n", rm->wl_message->name);
-  while((arg = wldbg_resolved_message_next_argument(rm))) {
-          assert(arg != NULL);
-          printf("  pos=%u, p=%u\n", pos, arg->data ? *((uint32_t *)arg->data) :
-  0);
-          ++pos;
-  }
-  */
-}
-
-void handle_pointer_message(struct wldbg_resolved_message *rm,
-                            struct connection_data *data) {
-  unsigned int pos = 0;
-  const struct wl_message *wl_message = rm->wl_message;
-  struct wldbg_resolved_arg *arg;
-
-  if (strcmp(wl_message->name, "motion") == 0) {
+/* write an event that has all arguments uint32_t */
+void
+write_event_args32(struct connection_data *data,
+                   struct wldbg_resolved_message *rm,
+                   enum vamos_event_idx event_idx)
+{
+    struct wldbg_resolved_arg *arg;
     unsigned char *addr = data_ptr(data);
     ++data->next_id;
-    printf("SEND: %lu of %lu\n", data->next_id, data->events[POINTER_MOTION].kind);
+
+    /* write the header */
     addr = vms_shm_buffer_partial_push(data->buffer, addr,
-                                       &data->events[POINTER_MOTION].kind,
+                                       &data->events[event_idx].kind,
                                        sizeof(vms_kind));
-    addr = vms_shm_buffer_partial_push(data->buffer, addr, &data->next_id,
+    addr = vms_shm_buffer_partial_push(data->buffer, addr,
+                                       &data->next_id,
                                        sizeof(vms_eventid));
 
+    /* write the arguments */
 #ifndef NDEBUG
     size_t n = 0;
 #endif
     while((arg = wldbg_resolved_message_next_argument(rm))) {
-      assert(n == 0 || arg->type == 'f');
-      assert(n != 0 || arg->type == 'u');
       addr = vms_shm_buffer_partial_push(data->buffer, addr,
 		      			 arg->data, sizeof(uint32_t));
-      assert(n++ <= 3);
+      assert(n++ <= strlen(vamos_events[event_idx].sig));
     }
-    assert(n == 3);
+    assert(n++ == strlen(vamos_events[event_idx].sig));
 
     vms_shm_buffer_finish_push(data->buffer);
+}
+
+int handle_keyboard_message(struct wldbg_resolved_message *rm,
+                            struct connection_data *data) {
+  unsigned int pos = 0;
+  const struct wl_message *wl_message = rm->wl_message;
+
+  enum vamos_event_idx event_idx = INVALID_IDX;
+  if (strcmp(wl_message->name, "key") == 0)
+      event_idx = KEYBOARD_KEY;
+
+  if (event_idx == KEYBOARD_KEY) {
+      write_event_args32(data, rm, event_idx);
+      return 1;
   }
+
+  return 0;
+}
+
+int handle_pointer_message(struct wldbg_resolved_message *rm,
+                           struct connection_data *data) {
+  unsigned int pos = 0;
+  const struct wl_message *wl_message = rm->wl_message;
+  struct wldbg_resolved_arg *arg;
+
+  enum vamos_event_idx event_idx = INVALID_IDX;
+  if (strcmp(wl_message->name, "motion") == 0)
+      event_idx = POINTER_MOTION;
+  else if (strcmp(wl_message->name, "button") == 0)
+      event_idx = POINTER_BUTTON;
+
+  if (event_idx == POINTER_MOTION || event_idx == POINTER_BUTTON) {
+      write_event_args32(data, rm, event_idx);
+      return 1;
+  }
+
+  return 0;
 }
