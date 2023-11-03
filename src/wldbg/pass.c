@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <wayland-client-protocol.h>
 #include <wldbg.h>
 
@@ -59,6 +60,14 @@
 #endif
 
 static void send_event(struct wldbg_message *message);
+
+
+// milisec. precise time
+static inline double get_mono_time() {
+    struct timespec tp;
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    return tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
+}
 
 struct pass_data {
     unsigned int incoming_number;
@@ -93,7 +102,9 @@ enum vamos_event_idx {
     /* IMPORTANT: these are indices of an array, so they must be 0, 1, ... */
     POINTER_MOTION = 0,
     POINTER_BUTTON = 1,
-    KEYBOARD_KEY = 2,
+    POINTER_ENTRY  = 2,
+    POINTER_LEAVE  = 3,
+    KEYBOARD_KEY   = 4,
     LAST_IDX = KEYBOARD_KEY,
     INVALID_IDX = 0xffff
 };
@@ -105,9 +116,11 @@ struct kind_mapping {
 } vamos_events[] = {
     /* the order of events must match the indices
      * in the enum vamos_event_idx */
-    {"pointer_motion", "iii", 0},
-    {"pointer_button", "iiii", 0},
-    {"keyboard_key", "iiii", 0},
+    {"pointer_motion", "diii", 0},
+    {"pointer_button", "diiii", 0},
+    {"pointer_entry", "diiii", 0},
+    {"pointer_leave", "dii", 0},
+    {"keyboard_key", "diiii", 0},
 };
 
 struct connection_data {
@@ -148,6 +161,8 @@ static vms_shm_buffer *init_vamos(const char *shmkey) {
         sizeof vamos_events / sizeof vamos_events[0],
         vamos_events[POINTER_MOTION].name, vamos_events[POINTER_MOTION].sig,
         vamos_events[POINTER_BUTTON].name, vamos_events[POINTER_BUTTON].sig,
+        vamos_events[POINTER_ENTRY].name, vamos_events[POINTER_ENTRY].sig,
+        vamos_events[POINTER_LEAVE].name, vamos_events[POINTER_LEAVE].sig,
         vamos_events[KEYBOARD_KEY].name, vamos_events[KEYBOARD_KEY].sig);
     if (!sub_control) {
         fprintf(stderr, "%s:%d: Failed defining source control\n", __FILE__,
@@ -265,6 +280,12 @@ struct connection_data *get_connection_data(struct wldbg_message *msg) {
         } else if (strcmp(event->name, vamos_events[POINTER_BUTTON].name) ==
                    0) {
             data->events[POINTER_BUTTON].kind = event->kind;
+        } else if (strcmp(event->name, vamos_events[POINTER_ENTRY].name) ==
+                   0) {
+            data->events[POINTER_ENTRY].kind = event->kind;
+        } else if (strcmp(event->name, vamos_events[POINTER_LEAVE].name) ==
+                   0) {
+            data->events[POINTER_LEAVE].kind = event->kind;
         } else if (strcmp(event->name, vamos_events[KEYBOARD_KEY].name) == 0) {
             data->events[KEYBOARD_KEY].kind = event->kind;
         }
@@ -402,6 +423,10 @@ int write_event_args32(struct connection_data *data,
     addr = vms_shm_buffer_partial_push(data->buffer, addr, &data->next_id,
                                        sizeof(vms_eventid));
 
+    /* write time */
+    double time = get_mono_time();
+    addr = vms_shm_buffer_partial_push(data->buffer, addr, &time, sizeof(time));
+
     /* write the arguments */
 #ifndef NDEBUG
     size_t n = 0;
@@ -409,9 +434,9 @@ int write_event_args32(struct connection_data *data,
     while ((arg = wldbg_resolved_message_next_argument(rm))) {
         addr = vms_shm_buffer_partial_push(data->buffer, addr, arg->data,
                                            sizeof(uint32_t));
-        assert(n++ <= strlen(vamos_events[event_idx].sig));
+        assert(n++ <= strlen(vamos_events[event_idx].sig) - 1);
     }
-    assert(n++ == strlen(vamos_events[event_idx].sig));
+    assert(n++ == strlen(vamos_events[event_idx].sig) - 1);
 
     vms_shm_buffer_finish_push(data->buffer);
     return 1;
@@ -440,6 +465,10 @@ int handle_pointer_message(struct wldbg_resolved_message *rm,
         return write_event_args32(data, rm, POINTER_MOTION);
     } else if (strcmp(wl_message->name, "button") == 0) {
         return write_event_args32(data, rm, POINTER_BUTTON);
+    } else if (strcmp(wl_message->name, "entry") == 0) {
+        return write_event_args32(data, rm, POINTER_ENTRY);
+    } else if (strcmp(wl_message->name, "leave") == 0) {
+        return write_event_args32(data, rm, POINTER_LEAVE);
     }
 
     return 0;

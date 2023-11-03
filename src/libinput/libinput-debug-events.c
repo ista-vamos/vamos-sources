@@ -75,7 +75,7 @@ struct _kind_mapping {
      * in the enum vamos_event_idx */
     {"pointer_motion", "ddddd", 0},
     {"pointer_motion_abs", "ddd", 0},
-    {"pointer_button", "dii", 0},
+    {"pointer_button", "dic", 0},
     {"keyboard_key", "dic", 0},
 };
 
@@ -453,7 +453,7 @@ static void handle_pointer_button_event(struct libinput_event *ev) {
     addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
     addr = vms_shm_buffer_partial_push(buffer, addr, &button, sizeof(button));
     unsigned char statec = (state == LIBINPUT_BUTTON_STATE_PRESSED);
-    addr = vms_shm_buffer_partial_push(buffer, addr, &statec, sizeof(char));
+    addr = vms_shm_buffer_partial_push(buffer, addr, &statec, sizeof(statec));
     vms_shm_buffer_finish_push(buffer);
 
 #ifndef NO_OUTPUT
