@@ -105,7 +105,9 @@ static unsigned char *push_header(vms_kind kind) {
     vev.base.kind = kind;
     ++vev.base.id;
     while (!(addr = vms_shm_buffer_start_push(buffer))) {
-        ++waiting_for_buffer;
+      ++waiting_for_buffer;
+      if (!vms_shm_buffer_reader_is_ready(buffer))
+        return NULL;
     }
 
     /* write the header */
@@ -363,6 +365,8 @@ static void handle_key_event(struct libinput_event *ev) {
     double time = libinput_event_keyboard_get_time(k);
 
     unsigned char *addr = push_header(kind);
+    if (!addr)
+        return;
     addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
     addr = vms_shm_buffer_partial_push(buffer, addr, &key, sizeof(key));
     unsigned char statec = (state == LIBINPUT_KEY_STATE_PRESSED);
@@ -397,6 +401,8 @@ static void handle_motion_event(struct libinput_event *ev) {
     double time = libinput_event_pointer_get_time(p);
 
     unsigned char *addr = push_header(kind);
+    if (!addr)
+        return;
 
     /* write the data */
     addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
@@ -425,6 +431,8 @@ static void handle_absmotion_event(struct libinput_event *ev) {
     double time = libinput_event_pointer_get_time(p);
 
     unsigned char *addr = push_header(kind);
+    if (!addr)
+        return;
 
     /* write the data */
     addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
@@ -450,6 +458,8 @@ static void handle_pointer_button_event(struct libinput_event *ev) {
     state = libinput_event_pointer_get_button_state(p);
 
     unsigned char *addr = push_header(kind);
+    if (!addr)
+        return;
     addr = vms_shm_buffer_partial_push(buffer, addr, &time, sizeof(time));
     addr = vms_shm_buffer_partial_push(buffer, addr, &button, sizeof(button));
     unsigned char statec = (state == LIBINPUT_BUTTON_STATE_PRESSED);
@@ -889,6 +899,11 @@ static int handle_and_write_events(struct libinput *li) {
     tools_dispatch(li);
     while ((ev = libinput_get_event(li))) {
         enum libinput_event_type type = libinput_event_get_type(ev);
+
+        if (!vms_shm_buffer_reader_is_ready(buffer)) {
+            stop = 1;
+            break;
+        }
 
         if (type != LIBINPUT_EVENT_POINTER_AXIS)
             print_event_header(ev);
