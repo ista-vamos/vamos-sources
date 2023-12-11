@@ -1231,6 +1231,7 @@ int main(int argc, char **argv) {
     mainloop(li);
 
     libinput_unref(li);
+    vms_shm_buffer_release(buffer);
 
     return EXIT_SUCCESS;
 }

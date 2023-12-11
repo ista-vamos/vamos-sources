@@ -209,7 +209,7 @@ static vms_shm_buffer *init_vamos(const char *shmkey) {
 
 static void destroy_data(struct wldbg_connection *conn, void *data) {
     struct connection_data *cdata = (struct connection_data *)data;
-    vms_shm_buffer_destroy_sub_buffer(cdata->buffer);
+    vms_shm_buffer_release_sub_buffer(cdata->buffer);
     free(data);
 }
 
