@@ -35,3 +35,4 @@ add_llvm_library(race-instrumentation
 		 PLUGIN_TOOL opt)
 target_include_directories(race-instrumentation SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
 
+add_subdirectory(store-load)
