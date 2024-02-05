@@ -19,10 +19,10 @@ struct StoreLoadInstrumentation : public FunctionPass {
 
   std::set<Value *> watching;
 
-  bool doInitialization(Module &M) override {
-      auto *watch = cast<Function>(M.getFunction("__vamos_watch"));
+  void getWatching(Module &M, const StringRef& fun) {
+      auto *watch = cast<Function>(M.getFunction(fun));
       if (!watch)
-          return false;
+          return;
 
       for (auto *user : watch->users()) {
           auto *C = dyn_cast<CallInst>(user);
@@ -33,7 +33,11 @@ struct StoreLoadInstrumentation : public FunctionPass {
           errs() << "WATCHING: " << *C->getOperand(0) << "\n";
           watching.insert(C->getOperand(0));
       }
+  }
 
+  bool doInitialization(Module &M) override {
+      getWatching(M, "__vamos_private");
+      getWatching(M, "__vamos_public");
       return false;
   }
 

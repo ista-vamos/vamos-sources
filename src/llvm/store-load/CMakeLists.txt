@@ -5,4 +5,4 @@ add_llvm_library(store-load-instrumentation
          PLUGIN_TOOL opt)
 target_include_directories(store-load-instrumentation SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
 
-add_library(store-load-impl STATIC impl.c)
+add_subdirectory(impl)
