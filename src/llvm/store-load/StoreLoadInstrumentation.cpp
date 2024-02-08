@@ -1,6 +1,8 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
+//#include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -36,12 +38,14 @@ struct StoreLoadInstrumentation : public FunctionPass {
   }
 
   bool doInitialization(Module &M) override {
-      getWatching(M, "__vamos_private");
-      getWatching(M, "__vamos_public");
+      getWatching(M, "__vamos_public_output");
+      getWatching(M, "__vamos_public_input");
       return false;
   }
 
   bool surelyNotWatched(Value *v, AliasAnalysis *AA) const {
+      return false;
+
       for (auto *ptr : watching) {
           if (AA->alias(ptr, v))
               return false;
@@ -50,31 +54,63 @@ struct StoreLoadInstrumentation : public FunctionPass {
       return true;
   }
 
+  void watchMemTransfer(MemTransferInst *MI, Module &mod, LLVMContext &ctx) {
+
+    Function *fun;
+    fun = cast<Function>(mod.getOrInsertFunction("__vamos_watch_memop",
+                      Type::getVoidTy(ctx),
+                      Type::getInt8PtrTy(ctx),
+                      Type::getInt64Ty(ctx)).getCallee());
+    std::vector<Value *> args = {MI->getSource(), MI->getLength()};
+    auto *call = CallInst::Create(fun, args, "", MI);
+    call->setDebugLoc(MI->getDebugLoc());
+  }
+
+
   void watchStore(StoreInst *S, Module &mod, LLVMContext &ctx) {
     auto bytes = mod.getDataLayout().getTypeAllocSize(S->getOperand(0)->getType());
+    if (S->getOperand(0)->getType()->isVectorTy()) {
+        errs() << "Unsupported store: " << *S << "\n";
+        return;
+    }
+
     Function *fun;
     if (bytes == 4) {
           fun = cast<Function>(mod.getOrInsertFunction("__vamos_watch_store4",
                                 Type::getVoidTy(ctx),
                                 Type::getInt32Ty(ctx),
-                                                       Type::getInt8PtrTy(ctx)).getCallee());
+                                Type::getInt8PtrTy(ctx)).getCallee());
     } else if (bytes == 8) {
           fun = cast<Function>(mod.getOrInsertFunction("__vamos_watch_store8",
                       Type::getVoidTy(ctx),
                       Type::getInt64Ty(ctx),
-                                                       Type::getInt8PtrTy(ctx)).getCallee());
+                      Type::getInt8PtrTy(ctx)).getCallee());
+    } else if (bytes == 2) {
+          fun = cast<Function>(mod.getOrInsertFunction("__vamos_watch_store2",
+                      Type::getVoidTy(ctx),
+                      Type::getInt16Ty(ctx),
+                      Type::getInt8PtrTy(ctx)).getCallee());
+    } else if (bytes == 1) {
+          fun = cast<Function>(mod.getOrInsertFunction("__vamos_watch_store1",
+                      Type::getVoidTy(ctx),
+                      Type::getInt8Ty(ctx),
+                      Type::getInt8PtrTy(ctx)).getCallee());
     } else {
         errs() << "Unsupported store: " << *S << "\n";
+        return;
     }
-
-    std::vector<Value *> args = {S->getOperand(0), S->getOperand(1)};
+    auto *val = S->getOperand(0);
+    if (val->getType()->isPointerTy()) {
+        val = new PtrToIntInst(val, Type::getInt64Ty(ctx), "", S);
+    }
+    std::vector<Value *> args = {val, S->getOperand(1)};
     auto *call = CallInst::Create(fun, args, "", S);
     call->setDebugLoc(S->getDebugLoc());
   }
 
   bool runOnFunction(Function &F) override {
-    errs() << "StoreLoadInstrumentation: ";
-    errs().write_escaped(F.getName()) << '\n';
+   //errs() << "StoreLoadInstrumentation: ";
+   //errs().write_escaped(F.getName()) << '\n';
 
     AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
     auto &mod = *F.getParent();
@@ -99,6 +135,17 @@ struct StoreLoadInstrumentation : public FunctionPass {
                 watchStore(Store, mod, ctx);
                 changed = true;
             }
+
+            if (auto *II= dyn_cast<MemTransferInst>(&*I)) {
+                if (II->onlyReadsMemory() || surelyNotWatched(II->getDest(), AA)) {
+                    ++I;
+                    continue;
+                }
+                errs() << "Intrinsic: " << *II << "\n";
+                watchMemTransfer(II, mod, ctx);
+                changed = true;
+            }
+
             ++I;
         }
     }
